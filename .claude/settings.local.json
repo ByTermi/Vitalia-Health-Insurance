@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(pnpm skills *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(npm uninstall *)",
+      "Bash(git commit *)",
+      "Bash(rtk --version)",
+      "Bash(rustc --version)",
+      "Bash(cargo --version)",
+      "PowerShell(Test-Path *)",
+      "PowerShell(curl *)",
+      "PowerShell(tail *)",
+      "PowerShell($ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest -Uri \"https://win.rustup.rs/x86_64\" -OutFile \"$env:TEMP\\\\rustup-init.exe\"; Write-Host \"Ejecutando instalador...\"; & \"$env:TEMP\\\\rustup-init.exe\" -y)"
+    ]
+  }
+}
