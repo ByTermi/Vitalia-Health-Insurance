@@ -12,3 +12,24 @@ build/
 
 # Local Claude Code settings (exclude sensitive config)
 .claude/settings.local.json
+
+# Personal vault snapshot (preferences, projects registry, secrets — not for team)
+.claude/skills/vault/
+
+# Personal invoice PDFs and financial data (kit-dashboard-facturas)
+.claude/skills/kit-dashboard-facturas/facturas/
+.claude/skills/kit-dashboard-facturas/facturas_datos.json
+
+# Python virtual environment
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# ML model weights (too large for git — use git-lfs or share separately)
+*.h5
+*.keras
+# Note: .tflite files ARE committed (small, final artifacts for the app)
