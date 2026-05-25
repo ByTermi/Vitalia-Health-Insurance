@@ -1,12 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm install *)",
+      "Bash(pnpm install *)",
       "Bash(pnpm skills *)",
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
       "Bash(git push *)",
-      "Bash(npm uninstall *)",
+      "Bash(pnpm uninstall *)",
       "Bash(git commit *)",
       "Bash(rtk --version)",
       "Bash(rustc --version)",
