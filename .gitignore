@@ -9,3 +9,6 @@ build/
 .next/
 .turbo/
 .cache/
+
+# Local Claude Code settings (exclude sensitive config)
+.claude/settings.local.json
