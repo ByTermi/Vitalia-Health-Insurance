@@ -33,3 +33,6 @@ __pycache__/
 *.h5
 *.keras
 # Note: .tflite files ARE committed (small, final artifacts for the app)
+
+# Graphify knowledge graph output
+graphify-out/
