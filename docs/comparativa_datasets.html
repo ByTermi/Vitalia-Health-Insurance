@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comparativa de Datasets — Vitalia HAR</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #0d1117;
+    color: #e6edf3;
+    line-height: 1.6;
+    padding: 32px 24px;
+  }
+
+  h1 {
+    font-size: 1.7rem;
+    font-weight: 700;
+    color: #58a6ff;
+    margin-bottom: 6px;
+  }
+  .subtitle {
+    color: #8b949e;
+    font-size: 0.95rem;
+    margin-bottom: 36px;
+  }
+
+  /* ── Section headings ── */
+  h2 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #c9d1d9;
+    margin: 36px 0 14px;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    border-bottom: 1px solid #21262d;
+    padding-bottom: 6px;
+  }
+
+  /* ── Verdict banner ── */
+  .verdict {
+    background: linear-gradient(135deg, #0c2a1a 0%, #0d1f12 100%);
+    border: 1.5px solid #3fb950;
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 32px;
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+  }
+  .verdict-icon { font-size: 2rem; line-height: 1; }
+  .verdict-text h3 { color: #3fb950; font-size: 1rem; margin-bottom: 4px; }
+  .verdict-text p { color: #aad4b0; font-size: 0.88rem; }
+
+  /* ── Main comparison grid ── */
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 200px 1fr 1fr;
+    gap: 0;
+    border: 1px solid #30363d;
+    border-radius: 10px;
+    overflow: hidden;
+    font-size: 0.875rem;
+  }
+
+  .compare-grid .cell {
+    padding: 12px 16px;
+    border-bottom: 1px solid #21262d;
+    border-right: 1px solid #21262d;
+    vertical-align: top;
+  }
+  .compare-grid .cell:last-child { border-right: none; }
+  .compare-grid .row:last-child .cell { border-bottom: none; }
+
+  .col-header {
+    font-weight: 700;
+    font-size: 0.85rem;
+    padding: 14px 16px;
+    border-bottom: 2px solid #30363d;
+    border-right: 1px solid #30363d;
+  }
+  .col-header:last-child { border-right: none; }
+  .col-dsads { background: #1c1c2e; color: #ff7b72; }
+  .col-ours  { background: #0c2414; color: #3fb950; }
+  .col-label { background: #161b22; color: #8b949e; font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: .05em; }
+
+  .row-label { background: #161b22; color: #8b949e; font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; display: flex; align-items: center; }
+  .row-dsads { background: #14121e; }
+  .row-ours  { background: #0a1a0f; }
+
+  /* ── Tag pills ── */
+  .tag {
+    display: inline-block;
+    border-radius: 12px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    margin: 2px 2px 2px 0;
+    white-space: nowrap;
+  }
+  .tag-ok   { background: #1a3825; color: #56d364; border: 1px solid #238636; }
+  .tag-warn { background: #2d1b00; color: #e3b341; border: 1px solid #9e6a03; }
+  .tag-bad  { background: #2d0e0e; color: #f85149; border: 1px solid #6e1c1c; }
+  .tag-na   { background: #1c2128; color: #6e7681; border: 1px solid #30363d; }
+
+  /* ── Dataset cards (our stack) ── */
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    margin-top: 4px;
+  }
+
+  .card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 10px;
+    padding: 16px 18px;
+  }
+  .card-title {
+    font-weight: 700;
+    font-size: 0.92rem;
+    color: #58a6ff;
+    margin-bottom: 4px;
+  }
+  .card-meta {
+    font-size: 0.78rem;
+    color: #6e7681;
+    margin-bottom: 10px;
+  }
+  .card-covers {
+    font-size: 0.82rem;
+    color: #c9d1d9;
+    margin-bottom: 6px;
+  }
+  .card-covers li { margin-left: 16px; margin-top: 2px; }
+  .card-why {
+    font-size: 0.78rem;
+    color: #8b949e;
+    font-style: italic;
+    border-top: 1px solid #21262d;
+    padding-top: 8px;
+    margin-top: 8px;
+  }
+
+  /* ── Req coverage table ── */
+  .req-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.845rem;
+  }
+  .req-table th {
+    background: #161b22;
+    color: #8b949e;
+    font-weight: 600;
+    text-align: left;
+    padding: 10px 14px;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    border-bottom: 2px solid #30363d;
+  }
+  .req-table th:not(:first-child) { text-align: center; }
+  .req-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid #21262d;
+    vertical-align: middle;
+  }
+  .req-table td:not(:first-child) { text-align: center; }
+  .req-table tr:last-child td { border-bottom: none; }
+  .req-table tr:hover td { background: #1c2128; }
+  .req-dsads { background: #14121e; }
+  .req-ours  { background: #0a1a0f; }
+
+  .check { color: #3fb950; font-size: 1.1rem; }
+  .cross { color: #f85149; font-size: 1.1rem; }
+  .partial { color: #e3b341; font-size: 1.1rem; }
+
+  /* ── Activities matrix ── */
+  .act-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+  }
+  .act-table th {
+    background: #161b22;
+    color: #8b949e;
+    padding: 8px 12px;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    border-bottom: 2px solid #30363d;
+    text-align: center;
+  }
+  .act-table th:first-child { text-align: left; }
+  .act-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid #21262d;
+    text-align: center;
+  }
+  .act-table td:first-child { text-align: left; color: #c9d1d9; }
+  .act-table tr:last-child td { border-bottom: none; }
+  .act-table tr:hover td { background: #1c2128; }
+
+  .footer {
+    margin-top: 48px;
+    color: #484f58;
+    font-size: 0.78rem;
+    border-top: 1px solid #21262d;
+    padding-top: 16px;
+  }
+
+  @media (max-width: 700px) {
+    .compare-grid { grid-template-columns: 120px 1fr 1fr; font-size: 0.8rem; }
+    .cards { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Comparativa de Datasets — Vitalia HAR</h1>
+<p class="subtitle">DSADS #256 (propuesto en el enunciado) vs. stack seleccionado para el proyecto</p>
+
+<!-- ═══════════════ VERDICT ═══════════════ -->
+<div class="verdict">
+  <div class="verdict-icon">✅</div>
+  <div class="verdict-text">
+    <h3>Veredicto: usar el stack propio (UCI HAR + MotionSense + PAMAP2 + MobiAct + SisFall)</h3>
+    <p>DSADS usa 5 unidades Xsens corporales (no smartphone), solo 25 Hz, 8 sujetos, sin caídas y ciclismo en bici estática. No aplica para inferencia on-device en smartphone. Nuestro stack cubre todos los requisitos del enunciado con datos de smartphone real a 50 Hz y 66–180 sujetos.</p>
+  </div>
+</div>
+
+<!-- ═══════════════ COMPARATIVA DIRECTA ═══════════════ -->
+<h2>Comparativa directa</h2>
+
+<div class="compare-grid">
+  <!-- Header row -->
+  <div class="col-header col-label" style="background:#161b22"></div>
+  <div class="col-header col-dsads">DSADS #256<br><span style="font-weight:400;font-size:0.78rem;">enunciado del caso</span></div>
+  <div class="col-header col-ours">Stack propio<br><span style="font-weight:400;font-size:0.78rem;">UCI HAR + MotionSense + PAMAP2 + MobiAct + SisFall</span></div>
+
+  <!-- Sensor platform -->
+  <div class="row row-label cell">Plataforma sensor</div>
+  <div class="cell row-dsads">
+    <span class="tag tag-bad">5 unidades Xsens MTx</span>
+    <span class="tag tag-bad">Torso + brazos + piernas</span>
+    <div style="margin-top:6px;font-size:0.8rem;color:#8b949e">Dispositivos de laboratorio, NO smartphone. Incompatible con inferencia on-device.</div>
+  </div>
+  <div class="cell row-ours">
+    <span class="tag tag-ok">Smartphone</span>
+    <span class="tag tag-ok">Bolsillo / cintura / muñeca</span>
+    <div style="margin-top:6px;font-size:0.8rem;color:#8b949e">Mismo hardware que el target de producción (app móvil del asegurado).</div>
+  </div>
+
+  <!-- Frecuencia -->
+  <div class="row row-label cell">Frecuencia muestreo</div>
+  <div class="cell row-dsads">
+    <span class="tag tag-bad">25 Hz</span>
+    <div style="margin-top:6px;font-size:0.8rem;color:#8b949e">Demasiado baja para detectar impactos de caída (pico dura ~100 ms → necesita ≥50 Hz).</div>
+  </div>
+  <div class="cell row-ours">
+    <span class="tag tag-ok">50 Hz (nativo UCI HAR, MotionSense)</span>
+    <span class="tag tag-ok">100 Hz → 50 Hz (PAMAP2)</span>
+    <span class="tag tag-ok">87 Hz → 50 Hz (MobiAct)</span>
+    <span class="tag tag-ok">200 Hz → 50 Hz (SisFall)</span>
+  </div>
+
+  <!-- Sujetos -->
+  <div class="row row-label cell">Nº de sujetos</div>
+  <div class="cell row-dsads">
+    <span class="tag tag-bad">8 sujetos</span>
+    <div style="margin-top:6px;font-size:0.8rem;color:#8b949e">Generalización muy limitada. LOSO con 8 fold apenas es estadísticamente significativo.</div>
+  </div>
+  <div class="cell row-ours">
+    <span class="tag tag-ok">UCI HAR: 30</span>
+    <span class="tag tag-ok">MotionSense: 24</span>
+    <span class="tag tag-ok">MobiAct: 66</span>
+    <span class="tag tag-ok">SisFall: 38 (15 ancianos 60-75)</span>
+    <div style="margin-top:6px;font-size:0.8rem;color:#8b949e">LOSO estadísticamente robusto. Único stack con datos de ancianos reales (segmento 65+ del enunciado).</div>
+  </div>
+
+  <!-- Caídas -->
+  <div class="row row-label cell">Detección de caídas</div>
+  <div class="cell row-dsads">
+    <span class="tag tag-bad">❌ Sin datos de caída</span>
+    <div style="margin-top:6px;font-size:0.8rem;color:#8b949e">El enunciado exige detector de caídas para el segmento 65+. DSADS no lo cubre en absoluto.</div>
+  </div>
+  <div class="cell row-ours">
+    <span class="tag tag-ok">MobiAct: 4 tipos (forward, backward, side, syncope)</span>
+    <span class="tag tag-ok">SisFall: 15 tipos + 12 ADL, ancianos reales</span>
+  </div>
+
+  <!-- Actividades target -->
+  <div class="row row-label cell">Actividades del enunciado</div>
+  <div class="cell row-dsads">
+    <span class="tag tag-ok">Estático (A1-A2)</span>
+    <span class="tag tag-ok">Escaleras (A5-A6)</span>
+    <span class="tag tag-warn">Correr: solo cinta (A12)</span>
+    <span class="tag tag-bad">Ciclismo: bici estática (A15-A16)</span>
+    <span class="tag tag-bad">Caminar: solo parking/cinta</span>
+    <div style="margin-top:6px;font-size:0.8rem;color:#8b949e">Bici estática ≠ ciclismo real al aire libre (señal giroscópica completamente distinta).</div>
+  </div>
+  <div class="cell row-ours">
+    <span class="tag tag-ok">Caminar — UCI HAR, MotionSense</span>
+    <span class="tag tag-ok">Correr — PAMAP2 (exterior)</span>
+    <span class="tag tag-ok">Ciclismo real — PAMAP2</span>
+    <span class="tag tag-ok">Escaleras — UCI HAR</span>
+    <span class="tag tag-ok">Estático — UCI HAR, MotionSense</span>
+  </div>
+
+  <!-- Placement / robustez -->
+  <div class="row row-label cell">Robustez de colocación (R2)</div>
+  <div class="cell row-dsads">
+    <span class="tag tag-bad">Posiciones fijas de laboratorio</span>
+    <div style="margin-top:6px;font-size:0.8rem;color:#8b949e">5 posiciones corporales fijas, siempre las mismas. No simula bolsillo, mano, brazalete ni bolso.</div>
+  </div>
+  <div class="cell row-ours">
+    <span class="tag tag-ok">UCI HAR: cintura</span>
+    <span class="tag tag-ok">MotionSense: bolsillo</span>
+    <span class="tag tag-ok">+ Augmentation: rotación de ejes, ruido, escalado</span>
+    <div style="margin-top:6px;font-size:0.8rem;color:#8b949e">Dos placements reales de smartphone + augmentation cubre bolsillo/mano/brazalete/bolso.</div>
+  </div>
+
+  <!-- On-device -->
+  <div class="row row-label cell">Viabilidad on-device (R1)</div>
+  <div class="cell row-dsads">
+    <span class="tag tag-bad">No aplicable</span>
+    <div style="margin-top:6px;font-size:0.8rem;color:#8b949e">45 canales de 5 unidades corporales imposibles de replicar en smartphone del usuario.</div>
+  </div>
+  <div class="cell row-ours">
+    <span class="tag tag-ok">6 canales — accel + gyro nativo</span>
+    <span class="tag tag-ok">Modelo TFLite INT8 &lt;500 KB</span>
+    <span class="tag tag-ok">&lt;50 ms latencia por ventana</span>
+  </div>
+
+  <!-- RGPD -->
+  <div class="row row-label cell">RGPD — datos de salud (R3)</div>
+  <div class="cell row-dsads">
+    <span class="tag tag-warn">No hay información de datos de salud ni privacidad</span>
+  </div>
+  <div class="cell row-ours">
+    <span class="tag tag-ok">Señal cruda nunca sale del dispositivo</span>
+    <span class="tag tag-ok">Solo eventos derivados al backend</span>
+    <span class="tag tag-ok">Cumplimiento Art. 9 RGPD por diseño</span>
+  </div>
+
+  <!-- Segmento 65+ -->
+  <div class="row row-label cell">Segmento 65+ del enunciado</div>
+  <div class="cell row-dsads">
+    <span class="tag tag-bad">Sujetos 20-30 años únicamente</span>
+  </div>
+  <div class="cell row-ours">
+    <span class="tag tag-ok">SisFall: 15 sujetos ancianos (60-75 años)</span>
+    <div style="margin-top:6px;font-size:0.8rem;color:#8b949e">Único stack con datos reales de ancianos. El enunciado enfatiza explícitamente este segmento.</div>
+  </div>
+</div>
+
+<!-- ═══════════════ COBERTURA DE REQUISITOS ═══════════════ -->
+<h2>Cobertura de requisitos del enunciado</h2>
+
+<table class="req-table">
+  <thead>
+    <tr>
+      <th style="width:36%">Requisito</th>
+      <th>DSADS #256</th>
+      <th>Stack propio</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Clase: estático (sentado/parado)</td>
+      <td class="req-dsads"><span class="check">✓</span> A1-A4</td>
+      <td class="req-ours"><span class="check">✓</span> UCI HAR, MotionSense</td>
+    </tr>
+    <tr>
+      <td>Clase: caminando</td>
+      <td class="req-dsads"><span class="partial">~</span> Solo parking/cinta, no libre</td>
+      <td class="req-ours"><span class="check">✓</span> UCI HAR, MotionSense (exterior)</td>
+    </tr>
+    <tr>
+      <td>Clase: corriendo</td>
+      <td class="req-dsads"><span class="partial">~</span> Solo cinta 8 km/h</td>
+      <td class="req-ours"><span class="check">✓</span> PAMAP2 (exterior, ritmo variable)</td>
+    </tr>
+    <tr>
+      <td>Clase: ciclismo real</td>
+      <td class="req-dsads"><span class="cross">✗</span> Bici estática (A15-A16)</td>
+      <td class="req-ours"><span class="check">✓</span> PAMAP2 ciclismo exterior</td>
+    </tr>
+    <tr>
+      <td>Clase: subir/bajar escaleras</td>
+      <td class="req-dsads"><span class="check">✓</span> A5-A6</td>
+      <td class="req-ours"><span class="check">✓</span> UCI HAR</td>
+    </tr>
+    <tr>
+      <td>Detección de caídas (65+)</td>
+      <td class="req-dsads"><span class="cross">✗</span> Sin datos de caída</td>
+      <td class="req-ours"><span class="check">✓</span> MobiAct (4 tipos) + SisFall (ancianos)</td>
+    </tr>
+    <tr>
+      <td>R1: modelo on-device (smartphone)</td>
+      <td class="req-dsads"><span class="cross">✗</span> 5 sensores corporales — imposible replicar</td>
+      <td class="req-ours"><span class="check">✓</span> 6 canales nativos del smartphone</td>
+    </tr>
+    <tr>
+      <td>R2: robustez variabilidad de colocación</td>
+      <td class="req-dsads"><span class="cross">✗</span> Posiciones fijas de laboratorio</td>
+      <td class="req-ours"><span class="check">✓</span> Dos placements + augmentation de ejes</td>
+    </tr>
+    <tr>
+      <td>R3: RGPD — señal cruda on-device</td>
+      <td class="req-dsads"><span class="cross">✗</span> Requiere 5 unidades externas al cuerpo</td>
+      <td class="req-ours"><span class="check">✓</span> Inferencia 100% en el smartphone</td>
+    </tr>
+    <tr>
+      <td>R4: trade-off FP/FN caídas</td>
+      <td class="req-dsads"><span class="cross">✗</span> Sin datos de caída para analizar</td>
+      <td class="req-ours"><span class="check">✓</span> Curva PR + 3 modos operación</td>
+    </tr>
+    <tr>
+      <td>R5: datasets públicos accel/gyro</td>
+      <td class="req-dsads"><span class="partial">~</span> Sí, pero Xsens, no smartphone</td>
+      <td class="req-ours"><span class="check">✓</span> UCI HAR, MotionSense, PAMAP2, MobiAct, SisFall</td>
+    </tr>
+    <tr>
+      <td>R6: estimación consumo batería</td>
+      <td class="req-dsads"><span class="cross">✗</span> No aplica (no es smartphone)</td>
+      <td class="req-ours"><span class="check">✓</span> &lt;5 mW en ARM Cortex-A55 duty-cycled</td>
+    </tr>
+    <tr>
+      <td>V5: validación datos propios</td>
+      <td class="req-dsads"><span class="cross">✗</span> Requiere Xsens MTx (hardware de laboratorio)</td>
+      <td class="req-ours"><span class="check">✓</span> Phyphox / Sensor Logger en el propio teléfono</td>
+    </tr>
+    <tr>
+      <td>Segmento 65+ (sujetos ancianos)</td>
+      <td class="req-dsads"><span class="cross">✗</span> Solo 20-30 años</td>
+      <td class="req-ours"><span class="check">✓</span> SisFall: 15 sujetos 60-75 años</td>
+    </tr>
+    <tr>
+      <td><strong>TOTAL CUBIERTO</strong></td>
+      <td class="req-dsads" style="color:#f85149;font-weight:700">4 / 14 requisitos</td>
+      <td class="req-ours" style="color:#3fb950;font-weight:700">14 / 14 requisitos</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ═══════════════ ACTIVIDADES COMPARADAS ═══════════════ -->
+<h2>Actividades cubierta por dataset</h2>
+
+<table class="act-table">
+  <thead>
+    <tr>
+      <th>Actividad</th>
+      <th>DSADS #256</th>
+      <th>UCI HAR</th>
+      <th>MotionSense</th>
+      <th>PAMAP2</th>
+      <th>MobiAct</th>
+      <th>SisFall</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Sentado / Parado</td>
+      <td><span class="check">✓</span> A1-A2</td>
+      <td><span class="check">✓</span></td>
+      <td><span class="check">✓</span></td>
+      <td><span class="partial">~</span></td>
+      <td><span class="check">✓</span> STD</td>
+      <td><span class="cross">—</span></td>
+    </tr>
+    <tr>
+      <td>Caminar (exterior / libre)</td>
+      <td><span class="partial">~</span> parking</td>
+      <td><span class="check">✓</span></td>
+      <td><span class="check">✓</span></td>
+      <td><span class="check">✓</span></td>
+      <td><span class="check">✓</span> WAL</td>
+      <td><span class="cross">—</span></td>
+    </tr>
+    <tr>
+      <td>Correr (exterior)</td>
+      <td><span class="partial">~</span> cinta 8km/h</td>
+      <td><span class="cross">—</span></td>
+      <td><span class="check">✓</span></td>
+      <td><span class="check">✓</span></td>
+      <td><span class="check">✓</span> JOG</td>
+      <td><span class="cross">—</span></td>
+    </tr>
+    <tr>
+      <td>Ciclismo <strong>real</strong></td>
+      <td><span class="cross">✗</span> bici estática</td>
+      <td><span class="cross">—</span></td>
+      <td><span class="cross">—</span></td>
+      <td><span class="check">✓</span></td>
+      <td><span class="cross">—</span></td>
+      <td><span class="cross">—</span></td>
+    </tr>
+    <tr>
+      <td>Subir / bajar escaleras</td>
+      <td><span class="check">✓</span> A5-A6</td>
+      <td><span class="check">✓</span></td>
+      <td><span class="check">✓</span></td>
+      <td><span class="check">✓</span></td>
+      <td><span class="check">✓</span> STU/STN</td>
+      <td><span class="cross">—</span></td>
+    </tr>
+    <tr>
+      <td>Caída: hacia delante (FOL)</td>
+      <td><span class="cross">—</span></td>
+      <td><span class="cross">—</span></td>
+      <td><span class="cross">—</span></td>
+      <td><span class="cross">—</span></td>
+      <td><span class="check">✓</span></td>
+      <td><span class="check">✓</span></td>
+    </tr>
+    <tr>
+      <td>Caída: hacia atrás (BSC)</td>
+      <td><span class="cross">—</span></td>
+      <td><span class="cross">—</span></td>
+      <td><span class="cross">—</span></td>
+      <td><span class="cross">—</span></td>
+      <td><span class="check">✓</span></td>
+      <td><span class="check">✓</span></td>
+    </tr>
+    <tr>
+      <td>Caída: lateral / síncope</td>
+      <td><span class="cross">—</span></td>
+      <td><span class="cross">—</span></td>
+      <td><span class="cross">—</span></td>
+      <td><span class="cross">—</span></td>
+      <td><span class="check">✓</span> SDL/SIS</td>
+      <td><span class="check">✓</span></td>
+    </tr>
+    <tr>
+      <td>ADL completas (cotidianas)</td>
+      <td><span class="partial">~</span> 19 actividades</td>
+      <td><span class="partial">~</span> 6</td>
+      <td><span class="partial">~</span> 6</td>
+      <td><span class="partial">~</span> 12</td>
+      <td><span class="check">✓</span> 12 ADL</td>
+      <td><span class="check">✓</span> 15 ADL</td>
+    </tr>
+    <tr>
+      <td>Sujetos ancianos (60-75)</td>
+      <td><span class="cross">—</span> 20-30 años</td>
+      <td><span class="cross">—</span></td>
+      <td><span class="cross">—</span></td>
+      <td><span class="cross">—</span></td>
+      <td><span class="cross">—</span></td>
+      <td><span class="check">✓</span> 15 sujetos</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ═══════════════ STACK PROPIO EN DETALLE ═══════════════ -->
+<h2>Stack propio — qué cubre cada dataset</h2>
+
+<div class="cards">
+
+  <div class="card">
+    <div class="card-title">UCI HAR #240</div>
+    <div class="card-meta">30 sujetos · 50 Hz · Smartphone cintura · UCI ML Repo</div>
+    <ul class="card-covers">
+      <li>Caminando, corriendo</li>
+      <li>Subir / bajar escaleras</li>
+      <li>Sentado, parado, tumbado</li>
+      <li>Baseline de referencia del campo (benchmark)</li>
+    </ul>
+    <div class="card-why">Fundamento del modelo HAR. Permite comparar con papers publicados directamente.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">MotionSense</div>
+    <div class="card-meta">24 sujetos · 50 Hz · Smartphone bolsillo · GitHub</div>
+    <ul class="card-covers">
+      <li>Mismo placement que usuario real (bolsillo)</li>
+      <li>Caminar, correr, escaleras, sentado, parado</li>
+      <li>Robustez de colocación junto con UCI HAR</li>
+    </ul>
+    <div class="card-why">Añade variabilidad de placement (cintura UCI vs bolsillo MotionSense) para cubrir R2.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">PAMAP2 #231</div>
+    <div class="card-meta">9 sujetos · 100 Hz → 50 Hz · Body-worn · UCI ML Repo</div>
+    <ul class="card-covers">
+      <li>Correr exterior (ritmo libre)</li>
+      <li><strong>Ciclismo real</strong> (único dataset con bici exterior)</li>
+      <li>Actividades adicionales para riqueza de señal</li>
+    </ul>
+    <div class="card-why">El enunciado exige ciclismo real. DSADS solo tiene bici estática. PAMAP2 es la única opción.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">MobiAct v2</div>
+    <div class="card-meta">66 sujetos · ~87 Hz → 50 Hz · Smartphone bolsillo · BMI HMU</div>
+    <ul class="card-covers">
+      <li>4 tipos de caída: FOL, BSC, SDL, SIS (síncope)</li>
+      <li>12 actividades ADL como negativo del detector</li>
+      <li>Mayor dataset de caídas con smartphone</li>
+    </ul>
+    <div class="card-why">Pilar principal del fall detector. 66 sujetos permiten LOSO robusto. Mismo hardware (smartphone bolsillo) que el target.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">SisFall</div>
+    <div class="card-meta">38 sujetos (15 ancianos 60-75) · 200 Hz → 50 Hz · Cintura · PMC</div>
+    <ul class="card-covers">
+      <li>15 tipos de caída + 12 ADL</li>
+      <li><strong>15 sujetos de 60-75 años</strong> (ancianos reales)</li>
+      <li>Caídas más lentas y suaves (patrón diferente al adulto joven)</li>
+    </ul>
+    <div class="card-why">El enunciado enfatiza el segmento 65+. SisFall es el único dataset público con sujetos ancianos reales. Diferenciador clave frente a la competencia.</div>
+  </div>
+
+</div>
+
+<!-- ═══════════════ FOOTER ═══════════════ -->
+<div class="footer">
+  <p>Vitalia Health Insurance · Caso 06 · Equipo: Íñigo S + Jaime · Generado el 25/05/2026</p>
+  <p style="margin-top:4px">DSADS: <a href="https://archive.ics.uci.edu/dataset/256/daily+and+sports+activities" style="color:#58a6ff">archive.ics.uci.edu/dataset/256</a> &nbsp;|&nbsp; UCI HAR: <a href="https://archive.ics.uci.edu/dataset/240" style="color:#58a6ff">dataset/240</a> &nbsp;|&nbsp; MobiAct: <a href="https://bmi.hmu.gr/the-mobifall-and-mobiact-datasets-2/" style="color:#58a6ff">bmi.hmu.gr</a></p>
+</div>
+
+</body>
+</html>

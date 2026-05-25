@@ -1,0 +1,3 @@
+# Place TFLite models here:
+# - har_model_int8.tflite   (from Íñigo — Day 5)
+# - fall_model_int8.tflite  (from Jaime notebooks/04)
