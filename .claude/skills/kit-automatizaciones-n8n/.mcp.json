@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "n8n": {
+      "command": "npx",
+      "args": ["-y", "n8n-mcp"],
+      "env": {
+        "N8N_API_URL": "https://divisual-project-n8n.56ws1a.easypanel.host/api/v1",
+        "N8N_API_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjNmU1YzMyMC02NDZmLTQ5ZTktYjFjYS1hMTAwMjRhZGZkN2EiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzc1NjcwNDY2LCJleHAiOjE3NzYyMDQwMDB9.lTV32zue3tY3DczRGwLi_ZqVGWHzwdYnBfBj5OXID10",
+        "N8N_WEBHOOK_URL": "https://divisual-project-n8n.56ws1a.easypanel.host"
+      }
+    }
+  }
+}

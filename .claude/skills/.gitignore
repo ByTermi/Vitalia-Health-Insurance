@@ -1,0 +1,21 @@
+# Keys index contains personal key names/notes — keep local
+# (safe to un-ignore since it stores no values, but personal by nature)
+vault/secrets/keys.md
+.env
+.env.local
+*.env
+
+# Obsidian internals
+vault/.obsidian/
+
+# Claude Code local overrides (machine-specific)
+.claude/settings.local.json
+
+# Node
+node_modules/
+.next/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
