@@ -15,8 +15,12 @@ Vitalia Health Insurance is a collaborative health insurance platform built with
 
 ### Installed Packages
 - **caveman** — API utilities and client tooling
-- **rtk** (Redux Toolkit) — State management framework
 - **flutter-expert** — Flutter development skill for mobile builds
+
+### External Tools (Managed by Team)
+- **rtk** (Token Management CLI) — Available via team member setup
+  - Repo: https://github.com/rtk-ai/rtk
+  - Contact team lead for installation/setup
 
 ### Development Commands
 ```bash
