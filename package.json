@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "caveman": "^0.1.6",
+    "rtk": "^4.2.0"
+  }
+}
