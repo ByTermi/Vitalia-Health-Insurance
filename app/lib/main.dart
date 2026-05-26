@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'screens/activity_screen.dart';
+import 'screens/home_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,7 +31,7 @@ class VitaliaApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const ActivityScreen(),
+      home: const HomePage(),
     );
   }
 }

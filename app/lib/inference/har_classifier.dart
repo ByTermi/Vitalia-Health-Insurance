@@ -27,6 +27,12 @@ const _vitaPointsPerMinute = {
   Activity.stationary: 0,
 };
 
+extension ActivityInfo on Activity {
+  String get displayName => _activityNames[this] ?? 'Unknown';
+  int get vitaPointsPerMin => _vitaPointsPerMinute[this] ?? 0;
+  bool get isActive => this != Activity.stationary;
+}
+
 class HarResult {
   final Activity activity;
   final double confidence;
