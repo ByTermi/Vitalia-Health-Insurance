@@ -1,5 +1,4 @@
 import 'package:tflite_flutter/tflite_flutter.dart';
-import '../sensors/sensor_service.dart';
 
 class FallResult {
   final int triggeredStage;
@@ -104,7 +103,7 @@ class FallDetector {
     final input = [window.map((s) => s.map((v) => v.toDouble()).toList()).toList()];
     final output = [[0.0]];
     _interpreter!.run(input, output);
-    return (output[0][0] as double).clamp(0.0, 1.0);
+    return output[0][0].clamp(0.0, 1.0);
   }
 
   void dispose() {
