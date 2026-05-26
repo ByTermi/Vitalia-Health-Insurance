@@ -267,11 +267,11 @@ class _HomePageState extends State<HomePage> {
     final activity = _lastHar?.activity;
     final icons = {
       Activity.walking: Icons.directions_walk,
-      Activity.running: Icons.directions_run,
-      Activity.cycling: Icons.directions_bike,
       Activity.upstairs: Icons.north,
       Activity.downstairs: Icons.south,
-      Activity.stationary: Icons.chair_outlined,
+      Activity.sitting: Icons.chair_outlined,
+      Activity.standing: Icons.accessibility_new,
+      Activity.running: Icons.directions_run,
     };
 
     return _card(

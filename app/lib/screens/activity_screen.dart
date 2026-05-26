@@ -52,8 +52,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
 
     // Award VitaPoints every minute of active movement
     _pointsTimer = Timer.periodic(const Duration(minutes: 1), (_) {
-      if (_currentActivity != null &&
-          _currentActivity != Activity.stationary) {
+      if (_currentActivity != null && _currentActivity!.isActive) {
         setState(() {
           _vitaPoints += _harClassifier.isLoaded
               ? (_currentActivity != null
@@ -187,11 +186,11 @@ class _ActivityScreenState extends State<ActivityScreen> {
   Widget _buildActivityCard() {
     final activityIcons = {
       Activity.walking: Icons.directions_walk,
-      Activity.running: Icons.directions_run,
-      Activity.cycling: Icons.directions_bike,
       Activity.upstairs: Icons.stairs,
       Activity.downstairs: Icons.stairs_outlined,
-      Activity.stationary: Icons.chair,
+      Activity.sitting: Icons.chair,
+      Activity.standing: Icons.accessibility_new,
+      Activity.running: Icons.directions_run,
     };
     final icon = activityIcons[_currentActivity] ?? Icons.device_unknown;
     final name = _currentActivity != null
