@@ -9,8 +9,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  tflite_flutter: ^0.10.4
-  sensors_plus: ^4.0.2
+  tflite_flutter: ^0.12.1
+  sensors_plus: ^7.0.0
   permission_handler: ^11.0.0
   collection: ^1.18.0
 
