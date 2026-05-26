@@ -31,6 +31,7 @@ class _HomePageState extends State<HomePage> {
   final Map<Activity, int> _activityMinutes = {};
   bool _modelsLoaded = false;
   bool _inFallAlert = false;
+  SensorSample? _lastSample;
   int _tab = 0;
 
   @override
@@ -63,6 +64,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _onSample(SensorSample sample) {
+    setState(() => _lastSample = sample);
     // HAR inference
     final harWindow = _harBuffer.addSample(sample);
     if (harWindow != null && _harClassifier.isLoaded) {
@@ -206,6 +208,8 @@ class _HomePageState extends State<HomePage> {
           _fallStatusCard(),
           const SizedBox(height: 14),
           _modeSelector(),
+          const SizedBox(height: 14),
+          _sensorReadingsCard(),
         ],
       ),
     );
@@ -350,6 +354,81 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
+
+  Widget _sensorReadingsCard() {
+    final s = _lastSample;
+    String fmt(double v) => v.toStringAsFixed(3);
+    return _card(
+      color: const Color(0xFF0D1F35),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Sensores en tiempo real',
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.45), fontSize: 11,
+                  fontWeight: FontWeight.w600, letterSpacing: 0.8)),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('ACELERÓMETRO (g)',
+                        style: TextStyle(color: Colors.greenAccent.withValues(alpha: 0.7),
+                            fontSize: 10, letterSpacing: 0.6)),
+                    const SizedBox(height: 4),
+                    _sensorRow('X', s != null ? fmt(s.ax) : '—', Colors.redAccent),
+                    _sensorRow('Y', s != null ? fmt(s.ay) : '—', Colors.greenAccent),
+                    _sensorRow('Z', s != null ? fmt(s.az) : '—', Colors.lightBlueAccent),
+                  ],
+                ),
+              ),
+              Container(width: 1, height: 70, color: Colors.white10),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('GIROSCOPIO (rad/s)',
+                          style: TextStyle(color: Colors.amber.withValues(alpha: 0.7),
+                              fontSize: 10, letterSpacing: 0.6)),
+                      const SizedBox(height: 4),
+                      _sensorRow('X', s != null ? fmt(s.gx) : '—', Colors.redAccent),
+                      _sensorRow('Y', s != null ? fmt(s.gy) : '—', Colors.greenAccent),
+                      _sensorRow('Z', s != null ? fmt(s.gz) : '—', Colors.lightBlueAccent),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'SVM: ${s != null ? s.svmG.toStringAsFixed(3) : '—'} g',
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.55), fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _sensorRow(String axis, String value, Color color) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(
+          children: [
+            SizedBox(
+                width: 16,
+                child: Text(axis,
+                    style: TextStyle(
+                        color: color, fontWeight: FontWeight.bold, fontSize: 13))),
+            const SizedBox(width: 6),
+            Text(value,
+                style: const TextStyle(
+                    color: Colors.white, fontSize: 13, fontFamily: 'monospace')),
+          ],
+        ),
+      );
 
   // ────────────────────────────────────────────────────────────────
   // TAB 2 — MÉTRICAS
