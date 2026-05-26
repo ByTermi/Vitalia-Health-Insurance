@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
 import '../sensors/sensor_service.dart';
 import '../inference/har_classifier.dart';
 import '../inference/fall_detector.dart';
+import '../storage/database_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -34,6 +36,14 @@ class _HomePageState extends State<HomePage> {
   SensorSample? _lastSample;
   int _tab = 0;
 
+  // ── Chart & DB ────────────────────────────────────────────────────
+  static const int _chartLen = 250; // 5 s @ 50 Hz
+  static const int _dbDecimate = 10; // store 1 of every 10 samples → 5 Hz
+  final List<double> _axBuf = [], _ayBuf = [], _azBuf = [];
+  int _sampleCount = 0;
+  int _dbReadingCount = 0;
+  final _db = DatabaseService.instance;
+
   @override
   void initState() {
     super.initState();
@@ -41,9 +51,14 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _init() async {
+    await _db.init();
     await _harClassifier.load();
     await _fallDetector.load();
-    setState(() => _modelsLoaded = true);
+    final count = await _db.readingCount();
+    setState(() {
+      _modelsLoaded = true;
+      _dbReadingCount = count;
+    });
     _startSensors();
   }
 
@@ -64,6 +79,32 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _onSample(SensorSample sample) {
+    _sampleCount++;
+
+    // Rolling chart buffer
+    _axBuf.add(sample.ax);
+    _ayBuf.add(sample.ay);
+    _azBuf.add(sample.az);
+    if (_axBuf.length > _chartLen) {
+      _axBuf.removeAt(0);
+      _ayBuf.removeAt(0);
+      _azBuf.removeAt(0);
+    }
+
+    // SQLite — store every _dbDecimate-th sample
+    if (_sampleCount % _dbDecimate == 0) {
+      _db.insertReading(SensorReading(
+        ts: DateTime.now().millisecondsSinceEpoch,
+        ax: sample.ax, ay: sample.ay, az: sample.az,
+        gx: sample.gx, gy: sample.gy, gz: sample.gz,
+        svm: sample.svmG,
+        activity: _lastHar?.activity.displayName,
+      )).then((_) async {
+        final c = await _db.readingCount();
+        if (mounted) setState(() => _dbReadingCount = c);
+      });
+    }
+
     setState(() => _lastSample = sample);
     // HAR inference
     final harWindow = _harBuffer.addSample(sample);
@@ -81,6 +122,13 @@ class _HomePageState extends State<HomePage> {
         _svmG = result.svmPeak;
       });
       if (result.isFall && result.triggeredStage >= 2 && !_inFallAlert) {
+        _db.insertFallEvent(FallEvent(
+          ts: DateTime.now().millisecondsSinceEpoch,
+          stage: result.triggeredStage,
+          svmPeak: result.svmPeak,
+          cnnProb: result.cnnProbability,
+          immobility: result.immobilityConfirmed,
+        ));
         _triggerFallAlert(result);
       }
     }
@@ -358,15 +406,90 @@ class _HomePageState extends State<HomePage> {
   Widget _sensorReadingsCard() {
     final s = _lastSample;
     String fmt(double v) => v.toStringAsFixed(3);
+
+    List<FlSpot> toSpots(List<double> buf) {
+      return List.generate(buf.length, (i) => FlSpot(i.toDouble(), buf[i]));
+    }
+
+    final hasData = _axBuf.length > 2;
+
     return _card(
       color: const Color(0xFF0D1F35),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Sensores en tiempo real',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.45), fontSize: 11,
-                  fontWeight: FontWeight.w600, letterSpacing: 0.8)),
+          // ── Header row ──────────────────────────────────────────
+          Row(
+            children: [
+              Text('Acelerómetro — últimos 5 s',
+                  style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.45),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.8)),
+              const Spacer(),
+              _legend('X', Colors.redAccent),
+              const SizedBox(width: 8),
+              _legend('Y', Colors.greenAccent),
+              const SizedBox(width: 8),
+              _legend('Z', Colors.lightBlueAccent),
+            ],
+          ),
           const SizedBox(height: 10),
+
+          // ── Line chart ──────────────────────────────────────────
+          SizedBox(
+            height: 120,
+            child: hasData
+                ? LineChart(
+                    LineChartData(
+                      minY: -3,
+                      maxY: 3,
+                      clipData: const FlClipData.all(),
+                      gridData: FlGridData(
+                        show: true,
+                        horizontalInterval: 1,
+                        getDrawingHorizontalLine: (_) => FlLine(
+                            color: Colors.white10, strokeWidth: 0.5),
+                        drawVerticalLine: false,
+                      ),
+                      borderData: FlBorderData(show: false),
+                      titlesData: FlTitlesData(
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 28,
+                            interval: 1,
+                            getTitlesWidget: (v, _) => Text(
+                              v.toInt().toString(),
+                              style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.3),
+                                  fontSize: 9),
+                            ),
+                          ),
+                        ),
+                        rightTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false)),
+                        topTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false)),
+                        bottomTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false)),
+                      ),
+                      lineBarsData: [
+                        _chartLine(toSpots(_axBuf), Colors.redAccent),
+                        _chartLine(toSpots(_ayBuf), Colors.greenAccent),
+                        _chartLine(toSpots(_azBuf), Colors.lightBlueAccent),
+                      ],
+                    ),
+                    duration: Duration.zero,
+                  )
+                : const Center(
+                    child: Text('Esperando datos…',
+                        style: TextStyle(color: Colors.white24))),
+          ),
+          const SizedBox(height: 12),
+
+          // ── Numeric values ───────────────────────────────────────
           Row(
             children: [
               Expanded(
@@ -374,26 +497,30 @@ class _HomePageState extends State<HomePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('ACELERÓMETRO (g)',
-                        style: TextStyle(color: Colors.greenAccent.withValues(alpha: 0.7),
-                            fontSize: 10, letterSpacing: 0.6)),
-                    const SizedBox(height: 4),
+                        style: TextStyle(
+                            color: Colors.greenAccent.withValues(alpha: 0.6),
+                            fontSize: 10,
+                            letterSpacing: 0.5)),
+                    const SizedBox(height: 3),
                     _sensorRow('X', s != null ? fmt(s.ax) : '—', Colors.redAccent),
                     _sensorRow('Y', s != null ? fmt(s.ay) : '—', Colors.greenAccent),
                     _sensorRow('Z', s != null ? fmt(s.az) : '—', Colors.lightBlueAccent),
                   ],
                 ),
               ),
-              Container(width: 1, height: 70, color: Colors.white10),
+              Container(width: 1, height: 65, color: Colors.white10),
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.only(left: 16),
+                  padding: const EdgeInsets.only(left: 14),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('GIROSCOPIO (rad/s)',
-                          style: TextStyle(color: Colors.amber.withValues(alpha: 0.7),
-                              fontSize: 10, letterSpacing: 0.6)),
-                      const SizedBox(height: 4),
+                          style: TextStyle(
+                              color: Colors.amber.withValues(alpha: 0.6),
+                              fontSize: 10,
+                              letterSpacing: 0.5)),
+                      const SizedBox(height: 3),
                       _sensorRow('X', s != null ? fmt(s.gx) : '—', Colors.redAccent),
                       _sensorRow('Y', s != null ? fmt(s.gy) : '—', Colors.greenAccent),
                       _sensorRow('Z', s != null ? fmt(s.gz) : '—', Colors.lightBlueAccent),
@@ -404,14 +531,42 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
           const SizedBox(height: 8),
-          Text(
-            'SVM: ${s != null ? s.svmG.toStringAsFixed(3) : '—'} g',
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.55), fontSize: 12),
+          Row(
+            children: [
+              Text('SVM: ',
+                  style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.45), fontSize: 12)),
+              Text(s != null ? '${s.svmG.toStringAsFixed(3)} g' : '—',
+                  style: const TextStyle(
+                      color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+              const Spacer(),
+              Text('$_dbReadingCount lecturas en DB',
+                  style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.3), fontSize: 10)),
+            ],
           ),
         ],
       ),
     );
   }
+
+  LineChartBarData _chartLine(List<FlSpot> spots, Color color) => LineChartBarData(
+        spots: spots,
+        isCurved: false,
+        color: color,
+        barWidth: 1.2,
+        dotData: const FlDotData(show: false),
+        belowBarData: BarAreaData(show: false),
+      );
+
+  Widget _legend(String label, Color color) => Row(
+        children: [
+          Container(width: 12, height: 2, color: color),
+          const SizedBox(width: 3),
+          Text(label,
+              style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w600)),
+        ],
+      );
 
   Widget _sensorRow(String axis, String value, Color color) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 2),
