@@ -36,3 +36,11 @@ __pycache__/
 
 # Graphify knowledge graph output
 graphify-out/
+
+# Datasets — raw downloads and archives (too large, download separately)
+data/raw/
+*.zip
+
+# Preprocessed numpy arrays (derived from raw, regenerable via notebooks)
+data/processed/*.npy
+# Note: EDA figures (*.png) in data/processed/ ARE committed (small, for memoria)
