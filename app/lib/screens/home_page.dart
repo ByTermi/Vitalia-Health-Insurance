@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:math' show sin, cos, pi;
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../sensors/sensor_service.dart';
 import '../inference/har_classifier.dart';
 import '../inference/fall_detector.dart';
 import '../storage/database_service.dart';
+import '../services/api_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -37,6 +39,16 @@ class _HomePageState extends State<HomePage> {
   SensorSample? _lastSample;
   int _tab = 0;
 
+  // ── Backend ───────────────────────────────────────────────────────
+  final _api = ApiService.instance;
+  bool _backendConnected = false;
+  String? _pendingFallId;
+
+  // ── Tests tab ────────────────────────────────────────────────────
+  final List<_TestResult> _testResults = [];
+  bool _testRunning = false;
+  bool _cancelRequested = false;
+
   // ── Chart & DB ────────────────────────────────────────────────────
   static const int _chartLen = 250; // 5 s @ 50 Hz
   static const int _dbDecimate = 10; // store 1 of every 10 samples → 5 Hz
@@ -56,9 +68,11 @@ class _HomePageState extends State<HomePage> {
     await _harClassifier.load();
     await _fallDetector.load();
     final count = await _db.readingCount();
+    final connected = await _api.checkHealth();
     setState(() {
       _modelsLoaded = true;
       _dbReadingCount = count;
+      _backendConnected = connected;
     });
     _startSensors();
   }
@@ -74,6 +88,15 @@ class _HomePageState extends State<HomePage> {
           _vitaPoints += activity.vitaPointsPerMin;
           _activeMinutes++;
           _activityMinutes[activity] = (_activityMinutes[activity] ?? 0) + 1;
+        });
+        // Send activity event to backend
+        _api.postActivity(
+          activity: activity.name,
+          durationSeconds: 60,
+        ).then((res) {
+          if (res != null && mounted) {
+            setState(() => _backendConnected = true);
+          }
         });
       }
     });
@@ -130,6 +153,13 @@ class _HomePageState extends State<HomePage> {
           cnnProb: result.cnnProbability,
           immobility: result.immobilityConfirmed,
         ));
+        // Send fall event to backend, store fall_id for ACK
+        _api.postFall(
+          stage: result.triggeredStage,
+          svmPeak: result.svmPeak,
+        ).then((fallId) {
+          if (mounted) setState(() => _pendingFallId = fallId);
+        });
         _triggerFallAlert(result);
       }
     }
@@ -169,6 +199,11 @@ class _HomePageState extends State<HomePage> {
             onPressed: () {
               Navigator.of(ctx).pop();
               setState(() => _inFallAlert = false);
+              // ACK cancels backend alert
+              if (_pendingFallId != null) {
+                _api.ackFall(_pendingFallId!);
+                _pendingFallId = null;
+              }
             },
             child: const Text('Estoy bien'),
           ),
@@ -178,7 +213,7 @@ class _HomePageState extends State<HomePage> {
             onPressed: () {
               Navigator.of(ctx).pop();
               setState(() => _inFallAlert = false);
-              // TODO: llamada al backend para alerta de emergencia
+              // No ACK → backend worker will send ntfy+email alert
             },
             child: const Text('Llamar a emergencias'),
           ),
@@ -196,6 +231,61 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
       );
+
+  void _showIpDialog() {
+    final ctrl = TextEditingController(text: _api.ip);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A2D4A),
+        title: const Text('Backend IP', style: TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: ctrl,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: 'IP del servidor',
+                labelStyle: TextStyle(color: Colors.white54),
+                hintText: '10.0.2.2',
+                hintStyle: TextStyle(color: Colors.white24),
+                enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.white24)),
+                focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.greenAccent)),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Emulador Android: 10.0.2.2\nDispositivo físico: IP local de tu PC',
+              style: TextStyle(color: Colors.white38, fontSize: 11),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancelar', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.greenAccent),
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              setState(() {
+                _api.ip = ctrl.text.trim();
+                _backendConnected = false;
+              });
+              final ok = await _api.checkHealth();
+              if (mounted) setState(() => _backendConnected = ok);
+            },
+            child: const Text('Conectar', style: TextStyle(color: Colors.black)),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   void dispose() {
@@ -224,9 +314,26 @@ class _HomePageState extends State<HomePage> {
                   height: 18,
                   child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)),
             ),
+          Padding(
+            padding: const EdgeInsets.only(right: 4),
+            child: Icon(
+              _backendConnected ? Icons.cloud_done_outlined : Icons.cloud_off_outlined,
+              color: _backendConnected ? Colors.greenAccent : Colors.white38,
+              size: 20,
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings_outlined, color: Colors.white54),
+            tooltip: 'Backend IP',
+            onPressed: _showIpDialog,
+          ),
         ],
       ),
-      body: _tab == 0 ? _buildActivityTab() : _buildMetricsTab(),
+      body: _tab == 0
+          ? _buildActivityTab()
+          : _tab == 1
+              ? _buildMetricsTab()
+              : _buildTestsTab(),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _tab,
         onTap: (i) => setState(() => _tab = i),
@@ -236,6 +343,7 @@ class _HomePageState extends State<HomePage> {
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.directions_walk), label: 'Actividad'),
           BottomNavigationBarItem(icon: Icon(Icons.analytics_outlined), label: 'Métricas'),
+          BottomNavigationBarItem(icon: Icon(Icons.science_outlined), label: 'Pruebas'),
         ],
       ),
     );
@@ -948,6 +1056,375 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // ────────────────────────────────────────────────────────────────
+  // TAB 3 — PRUEBAS
+  // ────────────────────────────────────────────────────────────────
+
+  Widget _buildTestsTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _sectionTitle('Conexión al backend'),
+          _card(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _testButton(
+                  label: 'Health check  GET /health',
+                  icon: Icons.cloud_outlined,
+                  color: Colors.lightBlueAccent,
+                  onTap: _testHealth,
+                ),
+                const SizedBox(height: 8),
+                _testButton(
+                  label: 'Enviar actividad  POST /events/activity',
+                  icon: Icons.send_outlined,
+                  color: Colors.greenAccent,
+                  onTap: _testPostActivity,
+                ),
+                const SizedBox(height: 8),
+                _testButton(
+                  label: 'Enviar caída  POST /events/fall',
+                  icon: Icons.warning_amber_outlined,
+                  color: Colors.orangeAccent,
+                  onTap: _testPostFall,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          _sectionTitle('Inferencia on-device'),
+          _card(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _testButton(
+                  label: 'HAR — datos de caminar',
+                  icon: Icons.directions_walk,
+                  color: Colors.greenAccent,
+                  onTap: () => _testHar('walking'),
+                ),
+                const SizedBox(height: 8),
+                _testButton(
+                  label: 'HAR — datos de correr',
+                  icon: Icons.directions_run,
+                  color: Colors.greenAccent,
+                  onTap: () => _testHar('running'),
+                ),
+                const SizedBox(height: 8),
+                _testButton(
+                  label: 'HAR — datos estático',
+                  icon: Icons.accessibility_new,
+                  color: Colors.white54,
+                  onTap: () => _testHar('static'),
+                ),
+                const SizedBox(height: 8),
+                _testButton(
+                  label: 'Fall detector — caída simulada (SVM 6g)',
+                  icon: Icons.personal_injury_outlined,
+                  color: Colors.redAccent,
+                  onTap: _testFallDetectorFall,
+                ),
+                const SizedBox(height: 8),
+                _testButton(
+                  label: 'Fall detector — ADL normal (sin caída)',
+                  icon: Icons.shield_outlined,
+                  color: Colors.tealAccent,
+                  onTap: _testFallDetectorAdl,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          if (_testRunning)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red.withOpacity(0.15),
+                  foregroundColor: Colors.redAccent,
+                  side: const BorderSide(color: Colors.redAccent),
+                ),
+                onPressed: () => setState(() {
+                  _cancelRequested = true;
+                  _testRunning = false;
+                }),
+                icon: const Icon(Icons.cancel_outlined, size: 18),
+                label: const Text('Cancelar prueba en curso'),
+              ),
+            ),
+          if (_testResults.isNotEmpty) ...[
+            Row(
+              children: [
+                Expanded(child: _sectionTitle('Resultados')),
+                TextButton(
+                  onPressed: () => setState(() => _testResults.clear()),
+                  child: const Text('Limpiar', style: TextStyle(color: Colors.white38, fontSize: 11)),
+                ),
+              ],
+            ),
+            ..._testResults.reversed.map(_buildTestResultCard),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _testButton({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) =>
+      ElevatedButton.icon(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color.withOpacity(0.12),
+          foregroundColor: color,
+          side: BorderSide(color: color.withOpacity(0.3)),
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        ),
+        onPressed: _testRunning ? null : onTap,
+        icon: Icon(icon, size: 18),
+        label: Text(label, style: const TextStyle(fontSize: 13)),
+      );
+
+  Widget _buildTestResultCard(_TestResult r) => Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: _card(
+          color: r.ok ? const Color(0xFF0D2D1A) : const Color(0xFF2D0D0D),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(r.ok ? Icons.check_circle_outline : Icons.error_outline,
+                      color: r.ok ? Colors.greenAccent : Colors.redAccent, size: 16),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(r.name,
+                        style: TextStyle(
+                            color: r.ok ? Colors.greenAccent : Colors.redAccent,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13)),
+                  ),
+                  Text(r.elapsed,
+                      style: const TextStyle(color: Colors.white38, fontSize: 11)),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(r.detail,
+                  style: const TextStyle(
+                      color: Colors.white70, fontSize: 12, fontFamily: 'monospace')),
+            ],
+          ),
+        ),
+      );
+
+  void _addResult(_TestResult r) {
+    if (mounted) setState(() => _testResults.add(r));
+  }
+
+  Future<void> _testHealth() async {
+    setState(() { _testRunning = true; _cancelRequested = false; });
+    final sw = Stopwatch()..start();
+    try {
+      final ok = await _api.checkHealth();
+      sw.stop();
+      if (_cancelRequested) return;
+      if (mounted) setState(() => _backendConnected = ok);
+      _addResult(_TestResult(
+        name: 'GET /health',
+        ok: ok,
+        detail: ok ? 'status: ok  db: ok  redis: ok  minio: ok' : 'Sin respuesta — backend no alcanzable',
+        elapsed: '${sw.elapsedMilliseconds} ms',
+      ));
+    } catch (e) {
+      _addResult(_TestResult(name: 'GET /health', ok: false, detail: 'Error: $e', elapsed: '${sw.elapsedMilliseconds} ms'));
+    } finally {
+      if (mounted && !_cancelRequested) setState(() => _testRunning = false);
+    }
+  }
+
+  Future<void> _testPostActivity() async {
+    setState(() { _testRunning = true; _cancelRequested = false; });
+    final sw = Stopwatch()..start();
+    try {
+      final res = await _api.postActivity(activity: 'walking', durationSeconds: 60);
+      sw.stop();
+      if (_cancelRequested) return;
+      final ok = res != null;
+      _addResult(_TestResult(
+        name: 'POST /events/activity  (walking, 60s)',
+        ok: ok,
+        detail: ok
+            ? 'vitapoints_earned: ${res!['vitapoints_earned']}\n'
+              'total_vitapoints:  ${res['total_vitapoints']}\n'
+              'streak_days:       ${res['streak_days']}\n'
+              'level:             ${res['level']}'
+            : 'Sin respuesta — backend no alcanzable',
+        elapsed: '${sw.elapsedMilliseconds} ms',
+      ));
+    } catch (e) {
+      _addResult(_TestResult(name: 'POST /events/activity', ok: false, detail: 'Error: $e', elapsed: '${sw.elapsedMilliseconds} ms'));
+    } finally {
+      if (mounted && !_cancelRequested) setState(() => _testRunning = false);
+    }
+  }
+
+  Future<void> _testPostFall() async {
+    setState(() { _testRunning = true; _cancelRequested = false; });
+    final sw = Stopwatch()..start();
+    try {
+      final fallId = await _api.postFall(stage: 2, svmPeak: 5.4);
+      sw.stop();
+      if (_cancelRequested) return;
+      final ok = fallId != null;
+      _addResult(_TestResult(
+        name: 'POST /events/fall  (stage=2, svm=5.4g)',
+        ok: ok,
+        detail: ok
+            ? 'fall_id: $fallId\nstatus: pending → worker esperará 30s ACK'
+            : 'Sin respuesta — backend no alcanzable',
+        elapsed: '${sw.elapsedMilliseconds} ms',
+      ));
+      if (ok) await _api.ackFall(fallId!); // auto-ACK so worker doesn't alert
+    } catch (e) {
+      _addResult(_TestResult(name: 'POST /events/fall', ok: false, detail: 'Error: $e', elapsed: '${sw.elapsedMilliseconds} ms'));
+    } finally {
+      if (mounted && !_cancelRequested) setState(() => _testRunning = false);
+    }
+  }
+
+  Future<void> _testHar(String type) async {
+    if (!_harClassifier.isLoaded) {
+      _addResult(_TestResult(name: 'HAR — $type', ok: false, detail: 'Modelo no cargado', elapsed: '0 ms'));
+      return;
+    }
+    setState(() { _testRunning = true; _cancelRequested = false; });
+    final sw = Stopwatch()..start();
+    try {
+      final window = List.generate(128, (i) {
+        final t = i / 50.0;
+        switch (type) {
+          case 'walking':
+            return [
+              0.15 * sin(2 * pi * 1.8 * t),
+              0.20 * sin(2 * pi * 1.8 * t + 1.0),
+              1.0 + 0.10 * sin(2 * pi * 3.6 * t),
+              0.05 * sin(2 * pi * 1.8 * t),
+              0.08 * sin(2 * pi * 1.8 * t),
+              0.04 * sin(2 * pi * 1.8 * t),
+            ];
+          case 'running':
+            return [
+              0.40 * sin(2 * pi * 2.8 * t),
+              0.50 * sin(2 * pi * 2.8 * t + 1.0),
+              1.0 + 0.30 * sin(2 * pi * 5.6 * t),
+              0.20 * sin(2 * pi * 2.8 * t),
+              0.25 * sin(2 * pi * 2.8 * t),
+              0.15 * sin(2 * pi * 2.8 * t),
+            ];
+          default: // static
+            return [0.01, 0.01, 1.0, 0.0, 0.0, 0.0];
+        }
+      });
+      final result = _harClassifier.classify(window);
+      sw.stop();
+      if (_cancelRequested) return;
+      _addResult(_TestResult(
+        name: 'HAR model — datos sintéticos ($type)',
+        ok: result != null,
+        detail: result != null
+            ? 'Predicción: ${result.activity.displayName}\n'
+              'Confianza:  ${(result.confidence * 100).toStringAsFixed(1)}%\n'
+              'VitaPoints: ${result.vitaPointsPerMinute} pts/min'
+            : 'Clasificador devolvió null',
+        elapsed: '${sw.elapsedMilliseconds} ms',
+      ));
+    } catch (e) {
+      _addResult(_TestResult(name: 'HAR — $type', ok: false, detail: 'Error: $e', elapsed: '${sw.elapsedMilliseconds} ms'));
+    } finally {
+      if (mounted && !_cancelRequested) setState(() => _testRunning = false);
+    }
+  }
+
+  Future<void> _testFallDetectorFall() async {
+    setState(() { _testRunning = true; _cancelRequested = false; });
+    final sw = Stopwatch()..start();
+    try {
+      // Synthetic fall: flat baseline + sharp 6g spike at sample 50
+      final window = List.generate(100, (i) {
+        if (i >= 44 && i <= 56) {
+          final phase = (i - 44) / 12.0; // 0..1
+          final peak = 6.0 * sin(phase * pi); // clean half-sine, 0→6→0
+          return [peak, peak * 0.3, 1.0 + peak * 0.5, 0.5, 0.3, 0.2];
+        }
+        // Post-fall immobility (last 25 samples very still)
+        if (i >= 75) return [0.01, 0.01, 1.0, 0.005, 0.005, 0.005];
+        return [0.02, 0.02, 1.0, 0.01, 0.01, 0.01];
+      });
+      final result = _fallDetector.analyze(window);
+      sw.stop();
+      if (_cancelRequested) return;
+      _addResult(_TestResult(
+        name: 'Fall detector — caída simulada (pico 6g)',
+        ok: result.isFall,
+        detail: 'Etapa activada: ${result.triggeredStage}\n'
+            'SVM peak:       ${result.svmPeak.toStringAsFixed(3)} g\n'
+            'CNN prob:       ${(result.cnnProbability * 100).toStringAsFixed(1)}%\n'
+            'Inmovilidad:    ${result.immobilityConfirmed}\n'
+            'Umbral SVM:     ${FallDetector.svmThreshold} g',
+        elapsed: '${sw.elapsedMilliseconds} ms',
+      ));
+    } catch (e) {
+      sw.stop();
+      _addResult(_TestResult(
+        name: 'Fall detector — caída simulada (pico 6g)',
+        ok: false,
+        detail: 'Excepción en inferencia CNN: $e\n'
+            'Stage 1 (SVM) puede haber pasado pero CNN lanzó error.',
+        elapsed: '${sw.elapsedMilliseconds} ms',
+      ));
+    } finally {
+      if (mounted && !_cancelRequested) setState(() => _testRunning = false);
+    }
+  }
+
+  Future<void> _testFallDetectorAdl() async {
+    setState(() { _testRunning = true; _cancelRequested = false; });
+    final sw = Stopwatch()..start();
+    try {
+      final window = List.generate(100, (i) {
+        final t = i / 50.0;
+        return [
+          0.15 * sin(2 * pi * 1.8 * t),
+          0.20 * sin(2 * pi * 1.8 * t + 1.0),
+          1.0 + 0.10 * sin(2 * pi * 3.6 * t),
+          0.05, 0.08, 0.04,
+        ];
+      });
+      final result = _fallDetector.analyze(window);
+      sw.stop();
+      if (_cancelRequested) return;
+      _addResult(_TestResult(
+        name: 'Fall detector — caminar normal (sin caída)',
+        ok: !result.isFall,
+        detail: 'Etapa activada: ${result.triggeredStage}\n'
+            'SVM peak:       ${result.svmPeak.toStringAsFixed(3)} g\n'
+            'CNN prob:       ${(result.cnnProbability * 100).toStringAsFixed(1)}%\n'
+            'Resultado:      ${result.isFall ? "CAÍDA (falso positivo!)" : "Sin caída ✓"}',
+        elapsed: '${sw.elapsedMilliseconds} ms',
+      ));
+    } catch (e) {
+      _addResult(_TestResult(name: 'Fall detector — ADL', ok: false, detail: 'Error: $e', elapsed: '${sw.elapsedMilliseconds} ms'));
+    } finally {
+      if (mounted && !_cancelRequested) setState(() => _testRunning = false);
+    }
+  }
+
   // ── Helpers ──────────────────────────────────────────────────────
 
   Widget _card({required Widget child, Color? color}) => Container(
@@ -1019,5 +1496,17 @@ class _FallStageInfo {
       required this.desc,
       required this.active,
       required this.value});
+}
+
+class _TestResult {
+  final String name;
+  final bool ok;
+  final String detail;
+  final String elapsed;
+  const _TestResult(
+      {required this.name,
+      required this.ok,
+      required this.detail,
+      required this.elapsed});
 }
 
