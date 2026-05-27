@@ -13,7 +13,8 @@ class ActivityScreen extends StatefulWidget {
 
 class _ActivityScreenState extends State<ActivityScreen> {
   final _sensorService = SensorService();
-  final _harBuffer = SlidingWindowBuffer(windowSize: 128, overlap: 0.5);
+  final _harBuffer = SlidingWindowBuffer(
+      windowSize: 128, overlap: 0.5, rowMapper: (s) => s.toListLinear());
   final _fallBuffer = SlidingWindowBuffer(windowSize: 100, overlap: 0.5);
   final _harClassifier = HarClassifier();
   final _fallDetector = FallDetector(mode: DetectionMode.balanced);

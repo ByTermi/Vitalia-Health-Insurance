@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'package:sensors_plus/sensors_plus.dart';
 
-/// 6-axis sensor sample: [ax, ay, az, gx, gy, gz] in SI units.
-/// Accelerometer: m/s² (divide by 9.81 to get g)
-/// Gyroscope: rad/s
+/// 6-axis sensor sample in g + rad/s.
+/// ax/ay/az: raw accelerometer (gravity included), in g — used by fall SVM/chart.
+/// lax/lay/laz: linear accelerometer (gravity removed), in g — used by HAR.
+/// gx/gy/gz: gyroscope, rad/s.
 class SensorSample {
   final double ax, ay, az;
+  final double lax, lay, laz;
   final double gx, gy, gz;
   final DateTime timestamp;
 
@@ -13,13 +15,21 @@ class SensorSample {
     required this.ax,
     required this.ay,
     required this.az,
+    required this.lax,
+    required this.lay,
+    required this.laz,
     required this.gx,
     required this.gy,
     required this.gz,
     required this.timestamp,
   });
 
+  /// Row for fall detector: raw accel (gravity) + gyro. Resting SVM ≈ 1 g.
   List<double> toList() => [ax, ay, az, gx, gy, gz];
+
+  /// Row for HAR: gravity-removed accel + gyro, matching UCI body_acc /
+  /// MotionSense userAcceleration the model trained on.
+  List<double> toListLinear() => [lax, lay, laz, gx, gy, gz];
 
   /// SVM = √(ax² + ay² + az²) in g
   double get svm =>
@@ -40,11 +50,13 @@ class SensorService {
   Stream<SensorSample> get sampleStream => _controller.stream;
 
   StreamSubscription? _accelSub;
+  StreamSubscription? _userAccelSub;
   StreamSubscription? _gyroSub;
   Timer? _timer;
 
-  // Latest raw readings
+  // Latest raw readings (g / rad/s)
   double _ax = 0, _ay = 0, _az = 0;
+  double _lax = 0, _lay = 0, _laz = 0;
   double _gx = 0, _gy = 0, _gz = 0;
 
   bool _running = false;
@@ -53,10 +65,18 @@ class SensorService {
     if (_running) return;
     _running = true;
 
+    // Raw accelerometer — includes gravity (fall SVM, chart).
     _accelSub = accelerometerEventStream().listen((e) {
       _ax = e.x / 9.81; // convert to g
       _ay = e.y / 9.81;
       _az = e.z / 9.81;
+    });
+
+    // Linear accelerometer — gravity removed (HAR input).
+    _userAccelSub = userAccelerometerEventStream().listen((e) {
+      _lax = e.x / 9.81;
+      _lay = e.y / 9.81;
+      _laz = e.z / 9.81;
     });
 
     _gyroSub = gyroscopeEventStream().listen((e) {
@@ -70,6 +90,7 @@ class SensorService {
       if (!_controller.isClosed) {
         _controller.add(SensorSample(
           ax: _ax, ay: _ay, az: _az,
+          lax: _lax, lay: _lay, laz: _laz,
           gx: _gx, gy: _gy, gz: _gz,
           timestamp: DateTime.now(),
         ));
@@ -81,6 +102,7 @@ class SensorService {
     _running = false;
     _timer?.cancel();
     _accelSub?.cancel();
+    _userAccelSub?.cancel();
     _gyroSub?.cancel();
   }
 
@@ -94,12 +116,17 @@ class SensorService {
 class SlidingWindowBuffer {
   final int windowSize;
   final int stepSize; // windowSize * (1 - overlap)
+  // How each sample becomes a feature row. HAR uses gravity-removed accel
+  // (toListLinear); fall detection uses raw accel (toList).
+  final List<double> Function(SensorSample) rowMapper;
   final _buffer = <SensorSample>[];
 
   SlidingWindowBuffer({
     required this.windowSize,
     double overlap = 0.5,
-  }) : stepSize = (windowSize * (1.0 - overlap)).round();
+    List<double> Function(SensorSample)? rowMapper,
+  })  : stepSize = (windowSize * (1.0 - overlap)).round(),
+        rowMapper = rowMapper ?? ((s) => s.toList());
 
   int _samplesSinceLastWindow = 0;
 
@@ -118,7 +145,7 @@ class SlidingWindowBuffer {
       final start = _buffer.length - windowSize;
       return _buffer
           .sublist(start)
-          .map((s) => s.toList())
+          .map(rowMapper)
           .toList();
     }
     return null;

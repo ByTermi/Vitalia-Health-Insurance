@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:tflite_flutter/tflite_flutter.dart';
 
 // Order MUST match the training class order (notebook 03):
@@ -76,13 +75,12 @@ class HarClassifier {
     if (!_loaded || _interpreter == null) return null;
     if (window.length != windowSize || window[0].length != channels) return null;
 
-    // Per-channel zero-mean/unit-std over the window, matching
-    // normalize_subject() in training. Without this the model sees raw g
-    // (idle phone ≈ 1g gravity offset) far outside its training distribution.
-    final normalized = _standardize(window);
+    // Window is gravity-removed accel (g) + gyro (rad/s), matching the
+    // UCI body_acc the model trained on. No per-window standardization:
+    // on a flat/idle window unit-std amplifies sensor noise into fake motion.
 
     // Input shape: [1, 128, 6]
-    final input = [normalized];
+    final input = [window];
     // Output shape: [1, 6]
     final output = [List<double>.filled(Activity.values.length, 0.0)];
 
@@ -97,37 +95,6 @@ class HarClassifier {
       confidence: probs[maxIdx],
       vitaPointsPerMinute: _vitaPointsPerMinute[activity] ?? 0,
     );
-  }
-
-  List<List<double>> _standardize(List<List<double>> window) {
-    final n = window.length;
-    final means = List<double>.filled(channels, 0.0);
-    final stds = List<double>.filled(channels, 0.0);
-
-    for (final s in window) {
-      for (var c = 0; c < channels; c++) {
-        means[c] += s[c];
-      }
-    }
-    for (var c = 0; c < channels; c++) {
-      means[c] /= n;
-    }
-
-    for (final s in window) {
-      for (var c = 0; c < channels; c++) {
-        final d = s[c] - means[c];
-        stds[c] += d * d;
-      }
-    }
-    for (var c = 0; c < channels; c++) {
-      stds[c] = sqrt(stds[c] / n) + 1e-8;
-    }
-
-    return window
-        .map((s) => [
-              for (var c = 0; c < channels; c++) (s[c] - means[c]) / stds[c]
-            ])
-        .toList();
   }
 
   void dispose() {
