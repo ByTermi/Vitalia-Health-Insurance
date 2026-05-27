@@ -1,4 +1,4 @@
-# B7 — Arquitectura de Producción
+# B7 — Arquitectura de Producción (Self-hosted · sin cloud)
 
 ## Diagrama general
 
@@ -14,34 +14,43 @@
 │  └─► HarClassifier CNN ──────────────────────────► VitaPoints UI     │
 │                                                                       │
 │  RAW SIGNAL NEVER LEAVES DEVICE  (RGPD Art. 9)                       │
-│  Only derived events exit: {activity, duration, fall_alert}          │
+│  Only derived events exit: {activity, duration_s}  {fall_alert}      │
 └───────────────────────────┬─────────────────────────────────────────┘
-                            │ HTTPS + JWT (eventos derivados solamente)
+                            │ HTTPS + TLS 1.3 + JWT (eventos derivados)
                             ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                         AWS BACKEND (serverless)                     │
+│               BACKEND SELF-HOSTED (EEE — Hetzner Frankfurt)          │
 │                                                                       │
-│  API Gateway                                                          │
-│  ├─► POST /events/activity  ─► Lambda (VitaPoints) ─► DynamoDB      │
-│  ├─► POST /events/fall      ─► Lambda (Alert)       ─► SNS ─► 112   │
-│  └─► GET  /models/latest    ─► S3 (Model Registry)                  │
+│  FastAPI (uvicorn)                                                    │
+│  ├─► POST /events/activity  ─► PostgreSQL (vitapoints_ledger)        │
+│  ├─► POST /events/fall      ─► Redis (cola alertas)                  │
+│  ├─► POST /events/fall/{id}/ack  ─► cancela alerta                   │
+│  ├─► GET  /models/latest    ─► MinIO (model registry)                │
+│  └─► DELETE /users/{id}/data ─► derecho al olvido (Art. 17)          │
 │                                                                       │
-│  CloudWatch Logs + X-Ray tracing                                     │
+│  Redis ──► Worker ──► espera 30s ACK                                  │
+│                   ├─► ntfy push (contacto emergencia)                │
+│                   └─► SMTP email (respaldo)                          │
+│                                                                       │
+│  PostgreSQL: vitapoints_ledger, activity_events, fall_events         │
+│  MinIO: bucket 'models' (OTA) + bucket 'training-data' (opt-in)      │
 └───────────────────────────┬─────────────────────────────────────────┘
                             │
                             ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         ML OPS PIPELINE                              │
 │                                                                       │
-│  DynamoDB (eventos anonimizados) ──► S3 (raw training data)         │
-│  S3 ──► SageMaker Training Job (trimestral o drift-triggered)        │
-│  SageMaker ──► Model Registry (versionado, A/B testing)             │
-│  Model Registry ──► S3 + CloudFront CDN ──► OTA update mobile       │
+│  Entrenamiento local (notebooks) → evaluación LOSO                  │
+│  ↓ recall ≥ 0.95 AND size < 500 KB AND latency < 50ms               │
+│  MLflow: registro de modelo + métricas + artefactos en MinIO        │
+│  MinIO bucket 'models': har_model_int8_v{N}.tflite                  │
+│  App Flutter: GET /models/latest en startup → OTA descarga          │
+│  Rollback: si FPR > 0.10 en 48h → volver a versión anterior MinIO   │
 │                                                                       │
-│  Monitoring: CloudWatch custom metrics                                │
+│  Monitoring: Prometheus (scrape /metrics) + Grafana                  │
 │  ├─► fall_fpr (False Positive Rate en producción)                   │
-│  ├─► activity_drift (distribución de actividades por semana)        │
-│  └─► model_latency_p99                                               │
+│  ├─► activity_drift (distribución semanal vs baseline)              │
+│  └─► api_latency_p99                                                 │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -55,72 +64,68 @@
 | `FallDetector` | Cascada 3 etapas | TFLite INT8 + Dart |
 | `LocalStore` | Caché de VitaPoints offline | SharedPreferences |
 
-**Duty cycling:** inferencia HAR cada 5 s (no cada ventana). FallDetector siempre activo pero Stage 1 (SVM check) es O(1) — activa CNN solo si SVM > 3g.
+**Duty cycling:** inferencia HAR cada 5 s. FallDetector: Stage 1 (SVM check) siempre activo, O(1). Activa CNN solo si SVM > 3g.
 
 **Latencia estimada:** < 15 ms por inferencia (INT8, XNNPACK, Pixel 7).
 
-## Backend serverless
+## Backend self-hosted — servicios (docker-compose)
 
-### Lambda: VitaPoints
+| Servicio | Imagen | Puerto | Rol |
+|----------|--------|--------|-----|
+| `api` | build ./api | 8000 | FastAPI: ingesta eventos, VitaPoints, OTA, RGPD delete |
+| `db` | postgres:16-alpine | 5432 | Persistencia eventos, ledger, consentimientos |
+| `redis` | redis:7-alpine | 6379 | Cola de alertas de caída |
+| `worker` | build ./worker | — | Procesa alertas: ACK 30s → ntfy + SMTP; cron TTL RGPD |
+| `minio` | minio/minio | 9000/9001 | Object store S3-compat: modelos TFLite + datos opt-in |
+| `ntfy` | binwiederhier/ntfy | 8080 | Push self-hosted: alertas contacto emergencia |
+| `mlflow` | ghcr.io/mlflow/mlflow | 5000 | Model registry + tracking + A/B testing |
+| `prometheus` | prom/prometheus | 9090 | Scrape /metrics de api + worker |
+| `grafana` | grafana/grafana-oss | 3000 | Dashboards: fall_fpr, drift, latencia, throughput |
+
+Repo backend separado: `E:\repos_claude_code\Vitalia Health Insurance Backend`
+
+## Lógica de los endpoints principales
+
+### POST /events/activity
 ```
-Input: {user_id_hash, activity, duration_s, timestamp}
-Logic: VitaPoints += duration_s/60 * points_per_minute[activity]
-Output: {total_vita_points, streak_days}
-Store: DynamoDB tabla vitalia-events (TTL 2 años)
+Input:  {user_id_hash, activity, duration_s}
+Logic:  VitaPoints += duration_s/60 × points_per_minute[activity]
+Output: {vitapoints_earned, total_vitapoints, streak_days, level}
+Store:  PostgreSQL: activity_events + vitapoints_ledger
 ```
 
-### Lambda: FallAlert
+### POST /events/fall → Worker (alerta)
 ```
-Input: {user_id_hash, fall_stage, svm_peak, timestamp, location_city}
+Input:  {user_id_hash, fall_stage, svm_peak}
 Logic:
-  1. Espera 30s ACK del usuario ("¿Estás bien?" prompt)
-  2. Si no ACK → SNS topic → SMS/llamada a contacto de emergencia
-  3. Opcionalmente → integración 112 (futuro)
-Store: DynamoDB tabla vitalia-falls (TTL 90 días)
+  1. Inserta fall_event(status=pending) en PostgreSQL
+  2. Encola fall_id en Redis
+  3. Worker consume: espera 30s ACK
+  4. Si no ACK → ntfy push al contacto emergencia + email SMTP
+  5. Prompt "¿Estás bien?" desde app → POST /events/fall/{id}/ack → cancela alerta
+Store:  PostgreSQL: fall_events (TTL 90 días)
 ```
 
 ### OTA Model Updates
 ```
-1. SageMaker entrena modelo nuevo → valida en hold-out set
-2. Si recall ≥ 0.95 → sube a S3/models/fall_model_int8_v{N}.tflite
-3. Mobile app comprueba GET /models/latest en cada startup
-4. Si versión > local → descarga background → swap en siguiente arranque
-5. Rollback automático si FPR > 0.10 en las primeras 48h (CloudWatch alarm)
-```
-
-## Training Pipeline (SageMaker)
-
-```
-Trigger: cron trimestral O CloudWatch alarm (drift > 0.15)
-
-1. Data Ingestion:
-   - DynamoDB export → S3 raw (solo eventos con consentimiento)
-   - Anonimización: user_id → hash, drop timestamps absolutos
-
-2. Feature Store: SageMaker Feature Store
-   - Ventanas preprocesadas (no señal cruda)
-   - Versionadas por dataset_version
-
-3. Training:
-   - SageMaker Training Job (ml.m5.xlarge, ~30 min)
-   - Hyperparameter tuning: threshold conservador (recall target = 0.95)
-   - LOSO CV con datos nuevos
-
-4. Export:
-   - Keras → TFLite → INT8 quantization
-   - Validate: size < 500 KB, latency < 50 ms (SageMaker Profiler)
-
-5. Registry:
-   - Model card con métricas por segmento (65+, general)
-   - A/B flag: 5% usuarios en nueva versión 1 semana antes de rollout
+1. Entrenar modelo nuevo localmente (notebooks) → validar: recall ≥ 0.95
+2. Registrar en MLflow: versión + métricas + artefacto .tflite
+3. Subir a MinIO bucket 'models': har_model_int8_v{N}.tflite
+4. App comprueba GET /models/latest en cada startup
+5. Si versión > local → descarga background → swap en siguiente arranque
+6. Rollback: si FPR > 0.10 en 48h (alerta Grafana) → volver a versión anterior en MinIO
 ```
 
 ## Decisiones de diseño clave
 
 | Decisión | Alternativa descartada | Razón |
 |----------|------------------------|-------|
-| On-device inference | API inference (enviar señal al backend) | RGPD Art. 9: señal fisiológica = dato sensible; latencia; funciona offline |
-| TFLite INT8 | TFLite FP32 | 4x menor tamaño, 2x más rápido, < 0.5% pérdida de accuracy |
-| Serverless (Lambda) | EC2 siempre encendido | 0 coste cuando sin tráfico; escala automático |
-| DynamoDB | RDS PostgreSQL | Sin esquema fijo para eventos heterogéneos; TTL nativo; coste |
-| SNS para alertas | Twilio | AWS-native, menor latencia, integrable con Step Functions |
+| On-device inference | API inference (señal al backend) | RGPD Art. 9: señal fisiológica = dato sensible; latencia; funciona offline |
+| TFLite INT8 | TFLite FP32 | 4× menor tamaño, 2× más rápido, < 0.5 % pérdida accuracy |
+| Self-hosted (EEE) | Cloud gestionado (AWS/GCP/Azure) | Soberanía de datos total: sin transferencias internacionales (no SCC); coste fijo predecible; sin vendor lock-in |
+| PostgreSQL | DynamoDB | Transacciones ACID; queries complejas de retención RGPD; sin coste por operación |
+| Redis + worker | Servicio de mensajería cloud | Sin vendor lock-in; latencia < 1ms local; control total del flujo de alerta |
+| MinIO | S3 | S3-compatible; self-hosted; sin egress fees; en EEE |
+| ntfy self-hosted | Twilio/Firebase | Sin coste por mensaje; sin datos de usuarios en terceros |
+| MLflow | SageMaker | Open source; sin coste de instancia GPU gestionada; entrenamiento local/on-prem |
+| Prometheus + Grafana | CloudWatch + X-Ray | Open source; sin coste por métrica; paneles personalizados para fall_fpr y drift |
