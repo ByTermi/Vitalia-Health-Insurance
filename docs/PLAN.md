@@ -210,32 +210,36 @@ Estrategia:
                     │ HTTPS + TLS 1.3 + JWT
                     ▼
 ┌─────────────────────────────────────────────────────┐
-│              BACKEND SERVERLESS (AWS)                │
-│  API Gateway → Lambda: validar + ingestar eventos    │
-│             → DynamoDB: VitaPoints ledger            │
-│             → SNS/SQS: pipeline alertas caída        │
-│                  → Lambda: notificación push         │
-│                  → Lambda: llamada centralita (65+)  │
-│  S3 Model Registry → OTA model updates → app        │
-│  SageMaker: pipeline de reentrenamiento              │
-│  CloudWatch: monitoring drift + FPR en producción   │
+│        BACKEND SELF-HOSTED (EEE — Hetzner)           │
+│  FastAPI: validar + ingestar eventos                 │
+│         → PostgreSQL: VitaPoints ledger              │
+│         → Redis → Worker: pipeline alertas caída     │
+│                  → ntfy push (contacto emergencia)   │
+│                  → SMTP email (respaldo)             │
+│  MinIO (OTA model registry) → app Flutter            │
+│  MLflow: pipeline reentrenamiento local              │
+│  Prometheus + Grafana: monitoring drift + FPR        │
 └─────────────────────────────────────────────────────┘
 ```
+
+> Backend de producción (docker-compose) en repo separado:
+> `E:\repos_claude_code\Vitalia Health Insurance Backend`
 
 ### Gobernanza RGPD (Art. 9 — datos de salud) — tabla explícita
 
 | Dato | Dónde se almacena | Cuánto tiempo | Protección |
 |------|-------------------|---------------|------------|
 | Señal cruda accel/gyro | **On-device, RAM** | < 10 s (ventana activa) | **Nunca sale del dispositivo** |
-| Eventos de actividad (tipo, duración) | Backend — DynamoDB | **2 años** (scoring VitaPoints) | Pseudonimizado por `user_id` hash |
-| Alertas de caída | Backend — DynamoDB | **90 días** | Acceso restringido a centralita |
-| Datos propios cedidos para reentrenamiento | Backend (solo con consent. explícito) | Hasta revocación del consentimiento | Anonimizados antes del ingesta |
+| Eventos de actividad (tipo, duración) | PostgreSQL on-prem (EEE) | **2 años** (scoring VitaPoints) | Pseudonimizado por `user_id_hash` |
+| Alertas de caída | PostgreSQL on-prem (EEE) | **90 días** | Acceso restringido a centralita |
+| Datos propios cedidos para reentrenamiento | MinIO on-prem (EEE, solo con consent. explícito) | Hasta revocación del consentimiento | Anonimizados antes del ingesta |
 
 **Cumplimiento:**
 - Consentimiento explícito en onboarding, separado para alertas de emergencia.
 - **DPIA** obligatoria (tratamiento a escala de datos de salud, Art. 9).
-- Derecho al olvido: endpoint `DELETE /users/{id}/events`.
-- Cumplimiento por diseño: los datos crudos del sensor nunca abandonan el dispositivo.
+- Derecho al olvido: endpoint `DELETE /users/{id}/data` (borra en cascada todos los eventos).
+- Cumplimiento por diseño: señal cruda nunca sale del dispositivo; eventos derivados solo en servidor EEE.
+- **Sin transferencias internacionales**: backend self-hosted en EEE → no se requieren SCC (Art. 46).
 
 ### Modelo de coste (M4 del enunciado)
 
@@ -246,7 +250,7 @@ Estrategia:
 | Data engineering (descarga, limpieza, pipeline) | 3 persona-semanas | ~6.000 € |
 | Modelado ML (HAR + fall detector + cuantización) | 4 persona-semanas | ~8.000 € |
 | Mobile dev (Flutter + TFLite + sensores) | 3 persona-semanas | ~6.000 € |
-| Backend serverless (API, alertas, OTA, monitoring) | 4 persona-semanas | ~8.000 € |
+| Backend self-hosted (FastAPI + Docker + PostgreSQL + Redis + MinIO) | 4 persona-semanas | ~8.000 € |
 | Legal / DPIA | 1 persona-semana | ~2.000 € |
 | QA + pruebas en campo | 2 persona-semanas | ~4.000 € |
 | **Total CapEx** | **17 persona-semanas** | **~34.000 €** |
@@ -255,15 +259,15 @@ Estrategia:
 
 | Componente | Coste/mes |
 |------------|-----------|
-| Backend serverless (Lambda + DynamoDB + API GW) | ~400 € |
-| Model OTA (S3 + CloudFront) | ~50 € |
-| Monitoring + alertas (CloudWatch + SNS) | ~100 € |
-| Training trimestral (GPU cloud p3.2xlarge ~4h) | ~17 € amortizado/mes |
-| **Total OpEx** | **~567 €/mes** |
+| Servidor principal (Hetzner AX42, Frankfurt EEE) | ~75 € |
+| Servidor réplica HA | ~30 € |
+| Backups + dominio | ~7 € |
+| Ops/sysadmin (0.1 FTE, docker) | ~400 € |
+| **Total OpEx** | **~512 €/mes** |
 
 **ROI:** si el sistema reduce la siniestralidad activa un 0.5 % en 180k asegurados → ahorro >> CapEx en año 1 y > 10× el OpEx mensual.
 
-**Comparativa:** solución de terceros (API de reconocimiento de actividad) costaría >5.000 €/mes Y transfiere datos de movimiento al proveedor (incompatible con Art. 9 RGPD).
+**Comparativa:** solución de terceros (API de reconocimiento de actividad) costaría >5.000 €/mes, transfiere datos de movimiento al proveedor (incompatible con Art. 9 RGPD), y no permite soberanía de datos en EEE.
 
 ---
 
@@ -318,7 +322,7 @@ Ver detalles en `docs/TAREAS_INIGO.md` y `docs/TAREAS_JAIME.md`.
 ## 9. Estrategia para los jueces y ventaja competitiva vs Santi-Sheimae
 
 **Argumento precio:**
-- CapEx ~34k€ + OpEx ~567 €/mes (transparente, desglosado). Las alternativas de terceros cuestan 10× más en OpEx y sin privacidad on-device.
+- CapEx ~34k€ + OpEx ~512 €/mes (transparente, desglosado, coste fijo). Las alternativas de terceros cuestan 10× más en OpEx y sin privacidad on-device.
 
 **Argumento robustez:**
 - LOSO cross-validation demuestra generalización real. Datos de nuestros propios móviles validan en condiciones reales (distintos teléfonos, colocaciones).
@@ -329,5 +333,6 @@ Ver detalles en `docs/TAREAS_INIGO.md` y `docs/TAREAS_JAIME.md`.
 - RGPD Art. 9 por diseño: señal cruda nunca sale del teléfono. La competencia que envíe datos a la nube tiene un problema legal con Vitalia.
 - ROI calculado sobre las 180k pólizas reales del enunciado.
 
-**Diferenciador on-device:**
-- Sin coste de API externa de reconocimiento de actividad. Sin dependencia de terceros. Sin riesgo RGPD. El modelo se actualiza OTA sin pasar por los stores.
+**Diferenciador on-device + self-hosted:**
+- Sin coste de API externa. Sin dependencia de terceros. Sin riesgo RGPD. El modelo se actualiza OTA desde MinIO sin pasar por los stores.
+- Backend self-hosted en EEE: datos de salud NUNCA salen del territorio europeo. Sin transferencias internacionales. Sin cláusulas contractuales tipo (SCC). Diferenciador legal único frente a cualquier competidor con cloud americano.
