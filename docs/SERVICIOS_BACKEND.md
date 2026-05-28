@@ -25,10 +25,10 @@
 | `redis` | 6379 | Cola `vitalia:falls` — buffer entre API y worker para el pipeline de alertas | — | `POST /events/fall` → encola `fall_id` |
 | `worker` | — | Consume la cola Redis, espera 30 s ACK, envía ntfy + SMTP si no hay respuesta. Cron RGPD los domingos a las 03:00. | `db`, `redis`, `ntfy` | `POST /events/fall` (side-effect asíncrono) |
 | `minio` | 9000 / 9001 | Almacén S3-compatible: modelos TFLite OTA (`models/`) + datos de reentrenamiento opt-in (`training-data/`) | — | `GET /models/latest`, `GET /models/{filename}`, `DELETE /users/*/data` |
-| `ntfy` | 8080 | Push notifications self-hosted — el worker envía aquí la alerta de caída | — | Alertas de caída no ACK tras 30 s |
-| `mlflow` | 5000 | Model registry + experiment tracking. Gestiona qué versión de modelo sube a MinIO. | `minio` | No consumido por la app — pipeline de entrenamiento |
-| `prometheus` | 9090 | Scraping de `/metrics` cada 15 s — almacena series temporales de latencia y contadores | `api` | No consumido por la app |
-| `grafana` | 3000 | Dashboard de monitorización — conectado a Prometheus | `prometheus` | No consumido por la app |
+| `ntfy` | 8080 | Push notifications self-hosted. Configurado con `ntfy/server.yml`: caché SQLite 24h (WAL), retención de adjuntos 1h. Worker publica alertas en `vitalia-falls-{hash[:8]}`. **App suscribe vía SSE** (`NtfyService`) para recibir notificaciones cuando el backend escala la alerta. | — | Alertas de caída no ACK tras 30 s; `NtfyService.subscribe()` al arrancar la app |
+| `mlflow` | 5000 | Model registry + experiment tracking. **Activo:** los notebooks 03/04/05 loguean experimentos, métricas por fold, artefactos y registran modelos en el model registry (`vitalia-har`, `vitalia-fall`). La sección de promoción en notebook 05 sube `.tflite` + `model_meta.json` a MinIO. | `minio` | No consumido por la app — pipeline de entrenamiento |
+| `prometheus` | 9090 | Scraping de `/metrics` cada 15 s. **Activo:** gauges `active_users_24h`, `fall_fpr_ratio` y métricas de calidad del modelo (`har_f1_macro`, `fall_recall_balanced`, etc.) se actualizan cada 60 s desde PostgreSQL y MinIO vía thread daemon en la API. Reglas de alerta en `prometheus/alerts.yml`. | `api` | No consumido por la app — monitorización interna |
+| `grafana` | 3000 | Dashboard de monitorización. **Activo:** 12 paneles — 6 de operación (FPR, usuarios, eventos, latencia) + row collapsable "Calidad del Modelo Desplegado" con gauges de recall/precision/F1/tamaño. | `prometheus` | No consumido por la app — monitorización interna |
 
 ---
 

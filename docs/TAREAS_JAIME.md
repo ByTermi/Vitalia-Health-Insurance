@@ -235,7 +235,7 @@ No avanzar a las tareas individuales hasta que estos estén listos.
 | `notebooks/02_eda_falls.ipynb` | [x] completo — SisFall 4505 grabaciones, SVM analysis, EDA |
 | `notebooks/04_fall_detection.ipynb` | [x] completo — CNN Recall 1.0, F1 0.98, TFLite 22 KB |
 | `models/tflite/fall_model_int8.tflite` | [x] 22 KB, latencia 0.02ms p99 |
-| App Flutter funcional (`app/`) | [x] shell ready (needs Flutter install + Day 5 .tflite) |
+| App Flutter funcional (`app/`) | [x] completa — 9 endpoints integrados, OTA, VitaPoints sync, ntfy SSE, SettingsScreen RGPD |
 | Diagrama arquitectura de producción | [x] en docs/arquitectura_produccion.md + Backend repo |
 | Secciones 6–10 de la memoria | [x] docs/MEMORIA_JAIME.md |
 | Datos propios + vídeo/capturas demo | [ ] |
