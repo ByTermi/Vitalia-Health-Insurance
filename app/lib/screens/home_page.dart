@@ -8,6 +8,7 @@ import '../inference/fall_detector.dart';
 import '../storage/database_service.dart';
 import '../services/api_service.dart';
 import '../services/model_update_service.dart';
+import '../services/ntfy_service.dart';
 import 'settings_screen.dart';
 
 class HomePage extends StatefulWidget {
@@ -45,6 +46,8 @@ class _HomePageState extends State<HomePage> {
 
   // ── Backend ───────────────────────────────────────────────────────
   final _api = ApiService.instance;
+  final _ntfy = NtfyService();
+  StreamSubscription? _ntfySub;
   bool _backendConnected = false;
   String? _pendingFallId;
 
@@ -101,6 +104,46 @@ class _HomePageState extends State<HomePage> {
       _backendConnected = connected;
     });
     _startSensors();
+    _subscribeNtfy();
+  }
+
+  void _subscribeNtfy() {
+    _ntfySub?.cancel();
+    _ntfy.subscribe(_api.ip);
+    _ntfySub = _ntfy.messages.listen(_onNtfyMessage);
+  }
+
+  void _onNtfyMessage(NtfyMessage msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: Colors.red.shade800,
+        duration: const Duration(seconds: 10),
+        content: Row(
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 28),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    msg.title.isNotEmpty ? msg.title : 'Alerta de caída',
+                    style: const TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                  Text(
+                    msg.message,
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _startSensors() {
@@ -314,7 +357,10 @@ class _HomePageState extends State<HomePage> {
                               _backendConnected = false;
                             });
                             final ok = await _api.checkHealth();
-                            if (mounted) setState(() => _backendConnected = ok);
+                            if (mounted) {
+                              setState(() => _backendConnected = ok);
+                              if (ok) _subscribeNtfy();
+                            }
                           },
                         )),
                     const Divider(color: Colors.white12),
@@ -401,7 +447,10 @@ class _HomePageState extends State<HomePage> {
                   _backendConnected = false;
                 });
                 final ok = await _api.checkHealth();
-                if (mounted) setState(() => _backendConnected = ok);
+                if (mounted) {
+                  setState(() => _backendConnected = ok);
+                  if (ok) _subscribeNtfy();
+                }
               },
               child: const Text('Conectar', style: TextStyle(color: Colors.black)),
             ),
@@ -418,6 +467,8 @@ class _HomePageState extends State<HomePage> {
     _harClassifier.dispose();
     _fallDetector.dispose();
     _pointsTimer?.cancel();
+    _ntfySub?.cancel();
+    _ntfy.dispose();
     super.dispose();
   }
 
