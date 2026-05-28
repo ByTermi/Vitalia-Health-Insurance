@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vitalia Health Insurance — Arquitectura Completa</title>
+<style>
+  :root {
+    --bg: #0a1628; --surface: #0d1f35; --card: #1a2d4a; --card2: #112038;
+    --green: #39ff87; --amber: #f59e0b; --red: #ef4444; --orange: #f97316;
+    --blue: #60a5fa; --purple: #a78bfa; --teal: #2dd4bf;
+    --white: #f1f5f9; --muted: rgba(241,245,249,0.5); --border: rgba(255,255,255,0.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--white); font-family: 'Segoe UI', system-ui, sans-serif; padding: 2rem; line-height: 1.6; }
+
+  /* ── Typography ─────────────────────────────────────────────────────────── */
+  h1 { font-size: 2rem; color: var(--green); margin-bottom: 0.2rem; }
+  h2 { font-size: 1.25rem; color: var(--blue); margin: 2.5rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 0.95rem; color: var(--amber); margin: 1.25rem 0 0.6rem; }
+  .subtitle { color: var(--muted); font-size: 0.9rem; margin-bottom: 0.25rem; }
+  .tagline { color: var(--green); font-size: 0.85rem; opacity: 0.7; margin-bottom: 2rem; }
+  p { font-size: 0.88rem; color: var(--muted); margin-bottom: 0.75rem; line-height: 1.65; }
+  code { background: rgba(255,255,255,0.08); border-radius: 4px; padding: 0.1rem 0.4rem; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.78rem; color: var(--green); }
+  pre { background: var(--surface); border-radius: 8px; padding: 1rem 1.25rem; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.78rem; color: var(--muted); overflow-x: auto; margin: 0.75rem 0 1rem; border: 1px solid var(--border); white-space: pre; line-height: 1.5; }
+
+  /* ── Layout ─────────────────────────────────────────────────────────────── */
+  .max-w { max-width: 1200px; margin: 0 auto; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 1.5rem; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+  @media (max-width: 900px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 600px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } }
+
+  /* ── Cards ──────────────────────────────────────────────────────────────── */
+  .card { background: var(--card); border-radius: 12px; padding: 1.25rem; border: 1px solid var(--border); }
+  .card-sm { background: var(--card); border-radius: 10px; padding: 1rem; border: 1px solid var(--border); }
+  .card-name { font-weight: 700; font-size: 0.95rem; margin-bottom: 0.35rem; }
+  .card-sub { font-size: 0.75rem; color: var(--muted); margin-bottom: 0.5rem; }
+  .card-desc { font-size: 0.82rem; color: var(--muted); line-height: 1.5; }
+
+  /* ── Badges / Tags ──────────────────────────────────────────────────────── */
+  .tag { display: inline-block; padding: 0.15rem 0.55rem; border-radius: 10px; font-size: 0.7rem; font-weight: 600; margin: 0.15rem 0.1rem; }
+  .tag-green  { background: rgba(57,255,135,0.12); color: var(--green); border: 1px solid rgba(57,255,135,0.3); }
+  .tag-blue   { background: rgba(96,165,250,0.12); color: var(--blue); border: 1px solid rgba(96,165,250,0.3); }
+  .tag-amber  { background: rgba(245,158,11,0.12); color: var(--amber); border: 1px solid rgba(245,158,11,0.3); }
+  .tag-purple { background: rgba(167,139,250,0.12); color: var(--purple); border: 1px solid rgba(167,139,250,0.3); }
+  .tag-red    { background: rgba(239,68,68,0.12); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
+  .tag-teal   { background: rgba(45,212,191,0.12); color: var(--teal); border: 1px solid rgba(45,212,191,0.3); }
+  .tag-orange { background: rgba(249,115,22,0.12); color: var(--orange); border: 1px solid rgba(249,115,22,0.3); }
+
+  /* ── Tables ─────────────────────────────────────────────────────────────── */
+  table { width: 100%; border-collapse: collapse; margin-bottom: 1.25rem; font-size: 0.83rem; }
+  th { background: var(--surface); color: var(--muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.6rem 0.8rem; text-align: left; }
+  td { padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:hover td { background: rgba(255,255,255,0.025); }
+
+  /* ── Arrows / Flow ──────────────────────────────────────────────────────── */
+  .flow { background: var(--surface); border-radius: 10px; padding: 1.25rem 1.5rem; margin-bottom: 1rem; border: 1px solid var(--border); }
+  .flow-title { color: var(--amber); font-weight: 700; font-size: 0.9rem; margin-bottom: 0.75rem; }
+  .flow pre { background: transparent; border: none; padding: 0; margin: 0; }
+
+  /* ── Metric pills ───────────────────────────────────────────────────────── */
+  .metric { display: inline-block; background: var(--surface); border-radius: 8px; padding: 0.4rem 0.8rem; font-size: 0.78rem; margin: 0.2rem; border: 1px solid var(--border); }
+  .metric-val { font-weight: 700; color: var(--green); font-size: 1rem; display: block; }
+  .metric-lbl { color: var(--muted); font-size: 0.68rem; }
+
+  /* ── Dot indicators ─────────────────────────────────────────────────────── */
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; flex-shrink: 0; }
+  .dot-green { background: var(--green); }
+  .dot-blue  { background: var(--blue); }
+  .dot-amber { background: var(--amber); }
+  .dot-purple{ background: var(--purple); }
+  .dot-red   { background: var(--red); }
+  .dot-teal  { background: var(--teal); }
+
+  /* ── Section highlight ──────────────────────────────────────────────────── */
+  .highlight { background: linear-gradient(135deg, rgba(57,255,135,0.06), rgba(96,165,250,0.06)); border-radius: 12px; padding: 1.25rem 1.5rem; border: 1px solid rgba(57,255,135,0.15); margin-bottom: 1.5rem; }
+
+  /* ── Architecture diagram ───────────────────────────────────────────────── */
+  .arch { background: var(--surface); border-radius: 14px; padding: 1.5rem 2rem; border: 1px solid var(--border); margin-bottom: 1.5rem; overflow-x: auto; }
+  .arch pre { background: transparent; border: none; padding: 0; margin: 0; font-size: 0.8rem; color: var(--white); }
+
+  /* ── Warning/note boxes ─────────────────────────────────────────────────── */
+  .note { background: rgba(245,158,11,0.07); border: 1px solid rgba(245,158,11,0.25); border-radius: 8px; padding: 0.75rem 1rem; font-size: 0.82rem; color: var(--amber); margin: 0.75rem 0; }
+  .note-green { background: rgba(57,255,135,0.07); border: 1px solid rgba(57,255,135,0.25); border-radius: 8px; padding: 0.75rem 1rem; font-size: 0.82rem; color: var(--green); margin: 0.75rem 0; }
+
+  /* ── Step list ──────────────────────────────────────────────────────────── */
+  .steps { counter-reset: step; }
+  .step { counter-increment: step; display: flex; gap: 1rem; margin-bottom: 0.75rem; align-items: flex-start; }
+  .step::before { content: counter(step); min-width: 26px; height: 26px; background: var(--surface); border: 1px solid var(--border); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; color: var(--blue); flex-shrink: 0; }
+  .step-body { font-size: 0.85rem; color: var(--muted); padding-top: 3px; }
+  .step-body strong { color: var(--white); }
+</style>
+</head>
+<body>
+<div class="max-w">
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- HEADER -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h1>Vitalia Health Insurance</h1>
+<p class="subtitle">HAR on-device + Detección de Caídas · Caso 06 · Equipo Íñigo + Jaime</p>
+<p class="tagline">Arquitectura completa — ML Pipeline · App Flutter · Backend · Monitoring</p>
+
+<div class="highlight">
+  <p style="color:var(--white); font-size:0.9rem; margin:0;">
+    <strong>Problema:</strong> Vitalia sufre ~35% de fraude en autoregistro de actividad física.
+    Esta solución infiere automáticamente la actividad desde el acelerómetro + giroscopio del smartphone
+    <strong>on-device</strong> (sin stream a la nube), clasifica 6 actividades, detecta caídas para el segmento 65+,
+    y actualiza los VitaPoints automáticamente en un backend self-hosted en EEE (RGPD by design).
+  </p>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- §1  VISIÓN GENERAL DEL SISTEMA -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2>§1 · Visión general del sistema</h2>
+
+<div class="arch">
+<pre>
+┌──────────────────────────────────────────────────────────────────────────────────────────────┐
+│  SMARTPHONE ANDROID (100 % on-device)                                                        │
+│                                                                                              │
+│  Acelerómetro + Giroscopio @ 50 Hz                                                          │
+│         │                                                                                    │
+│         ▼                                                                                    │
+│  SensorService  ──►  SlidingWindowBuffer (128×6 HAR · 100×6 Fall)                          │
+│         │                      │                                                            │
+│         │            ┌─────────┴─────────┐                                                 │
+│         │            ▼                   ▼                                                  │
+│         │     HarClassifier          FallDetector (cascada 3 etapas)                       │
+│         │     CNN 1D INT8            Stage 1: SVM > 3g                                     │
+│         │     105 KB · ~0.09ms       Stage 2: CNN prob > threshold                         │
+│         │     6 clases              Stage 3: inmovilidad 30s                               │
+│         │            │                   │                                                  │
+│         │         Activity          Fall detected?                                          │
+│         │            │                   │                                                  │
+│         │     VitaPoints UI        "¿Estás bien?" dialog (30s)                             │
+│         │            │                   │                                                  │
+│  SQLite (DatabaseService)          No ACK → alerta                                         │
+│  sensor_readings · fall_events                                                              │
+│                                                                                              │
+│  HTTPS (TLS 1.3 · JWT)  ──────────────────────────────────────────────────────────────────►│
+└──────────────────────────────────────────────────────────────────────────────────────────────┘
+                                                  │
+                                                  ▼
+┌──────────────────────────────────────────────────────────────────────────────────────────────┐
+│  BACKEND SELF-HOSTED · Hetzner Frankfurt (EEE)                                               │
+│                                                                                              │
+│  FastAPI :8000  ──►  PostgreSQL 16  ──►  Redis  ──►  Worker                                │
+│                            │                              │                                  │
+│                      VitaPoints                    ntfy :8080                               │
+│                      Ledger                        (alerta caída)                           │
+│                      Fall Events                                                            │
+│                            │                                                                │
+│  MinIO :9000  (modelos TFLite OTA + model_meta.json)                                       │
+│  MLflow :5000 (experiment tracking · model registry)                                       │
+│  Prometheus :9090 + Grafana :3000 (monitoring)                                             │
+└──────────────────────────────────────────────────────────────────────────────────────────────┘
+                │ SSE stream
+                ▼
+        App Flutter recibe alerta ntfy → Snackbar rojo
+</pre>
+</div>
+
+<div class="grid-4">
+  <div class="card-sm">
+    <div class="card-name" style="color:var(--green)">On-device</div>
+    <div class="card-desc">Señal cruda NUNCA sale del dispositivo. Solo eventos derivados van al backend. RGPD Art. 9 by design.</div>
+  </div>
+  <div class="card-sm">
+    <div class="card-name" style="color:var(--blue)">Self-hosted EEE</div>
+    <div class="card-desc">Backend en Hetzner Frankfurt. Sin transferencias internacionales. Sin SCC. Sin Schrems II.</div>
+  </div>
+  <div class="card-sm">
+    <div class="card-name" style="color:var(--amber)">OTA sin store</div>
+    <div class="card-desc">Nuevos modelos TFLite se despliegan via MinIO → API → app. Sin pasar por Google Play.</div>
+  </div>
+  <div class="card-sm">
+    <div class="card-name" style="color:var(--purple)">119 tests</div>
+    <div class="card-desc">Suite pytest completa: endpoints, worker, lógica de negocio. SQLite + mocks, sin Docker.</div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- §2  PIPELINE ML -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2>§2 · Pipeline ML — Entrenamiento</h2>
+<p>Todo el pipeline de entrenamiento vive en <code>notebooks/</code> y <code>src/preprocessing/</code>. Los modelos entrenados se exportan a <code>models/tflite/</code> y se copian a <code>app/assets/models/</code>.</p>
+
+<h3>Datasets</h3>
+<table>
+  <thead><tr><th>Dataset</th><th>Uso</th><th>Hz</th><th>Sujetos</th><th>Clave</th></tr></thead>
+  <tbody>
+    <tr><td><strong>UCI HAR #240</strong></td><td>Actividades principal</td><td>50</td><td>30</td><td>Accel+Gyro smartphone cintura</td></tr>
+    <tr><td><strong>MotionSense</strong></td><td>Actividades bolsillo</td><td>50</td><td>24</td><td>Invarianza de colocación</td></tr>
+    <tr><td><strong>PAMAP2</strong></td><td>Running + Cycling</td><td>100→50</td><td>9</td><td>Actividades de mayor intensidad</td></tr>
+    <tr><td><strong>SisFall</strong></td><td>Caídas principal</td><td>200→50</td><td>38 (15 ancianos)</td><td>Segmento 65+, bits→g conversión</td></tr>
+    <tr><td><strong>MobiAct v2</strong></td><td>Caídas bolsillo</td><td>87→50</td><td>66</td><td>4 tipos de caída reales</td></tr>
+  </tbody>
+</table>
+
+<h3>Notebooks</h3>
+<div class="grid-2">
+  <div class="card-sm">
+    <div class="card-name">01_eda_activities.ipynb</div>
+    <div class="card-sub">EDA actividades</div>
+    <div class="card-desc">Análisis exploratorio UCI HAR + MotionSense + PAMAP2. Distribución de clases, análisis SVM, efectos del augmentation, comparativa placement bolsillo vs cintura.</div>
+  </div>
+  <div class="card-sm">
+    <div class="card-name">02_eda_falls.ipynb</div>
+    <div class="card-sub">EDA caídas — SisFall 4505 grabaciones</div>
+    <div class="card-desc">Distribución pico SVM por tipo de caída, análisis inmovilidad post-caída, diferencia señal jóvenes vs ancianos. Motivación umbral 3g para Stage 1 cascada.</div>
+  </div>
+  <div class="card-sm">
+    <div class="card-name">03_fall_baseline.ipynb</div>
+    <div class="card-sub">Baseline LR + RF LOSO</div>
+    <div class="card-desc">Features manuales (peak SVM, energía, duración, varianza post-caída). LR: Recall 0.885, AUC 0.959. RF: Recall 0.931, AUC 0.986. Motiva arquitectura CNN.</div>
+  </div>
+  <div class="card-sm">
+    <div class="card-name">03_har_training.ipynb</div>
+    <div class="card-sub">1D-CNN HAR — 54 sujetos LOSO</div>
+    <div class="card-desc">CNN 1D: Conv1D(64)→BN→Pool→Conv1D(128)→BN→Pool→Conv1D(128)→BN→GAP→Dense(64)→Softmax(6). F1-macro LOSO 0.87. Ablación CNN+GRU. Exporta har_model_keras.keras.</div>
+  </div>
+  <div class="card-sm">
+    <div class="card-name">04_fall_detection.ipynb</div>
+    <div class="card-sub">CNN binario — Recall 1.0, F1 0.98</div>
+    <div class="card-desc">SMOTE + class_weight. Curva PR con 3 puntos de operación (conservador 65+, equilibrado, estricto). Cascada 3 etapas. TFLite INT8: 22 KB, 0.02ms p99. Exporta fall_model_int8.tflite.</div>
+  </div>
+  <div class="card-sm">
+    <div class="card-name">05_tflite_benchmark.ipynb</div>
+    <div class="card-sub">Compresión + OTA promotion</div>
+    <div class="card-desc">FP32 341KB → FP16 179KB → INT8 105KB. Accuracy delta: −1.0%. Latencia 0.09ms. Batería: 0.009mW media (duty-cycle 0.004%). Sección de promoción: sube .tflite + model_meta.json a MinIO.</div>
+  </div>
+</div>
+
+<h3>Preprocesado compartido — <code>src/preprocessing/windowing.py</code></h3>
+<div class="grid-3">
+  <div class="card-sm">
+    <div class="card-name"><code>resample()</code></div>
+    <div class="card-desc">Resamplea señal a 50 Hz. Normaliza datasets que vienen a 87, 100 o 200 Hz.</div>
+  </div>
+  <div class="card-sm">
+    <div class="card-name"><code>sliding_window()</code></div>
+    <div class="card-desc">Ventanas de 128 muestras (2.56s) con 50% solapamiento para actividades.</div>
+  </div>
+  <div class="card-sm">
+    <div class="card-name"><code>compute_svm()</code></div>
+    <div class="card-desc">Signal Vector Magnitude √(ax²+ay²+az²). Invariante a rotación del dispositivo.</div>
+  </div>
+  <div class="card-sm">
+    <div class="card-name"><code>detect_impact_peaks()</code></div>
+    <div class="card-desc">Localiza el pico de impacto en la señal SVM (umbral configurable). Usado para centrar la ventana de caída.</div>
+  </div>
+  <div class="card-sm">
+    <div class="card-name"><code>extract_fall_window()</code></div>
+    <div class="card-desc">Extrae ventana de 100 muestras centrada en el pico de impacto (pre=50, post=50).</div>
+  </div>
+  <div class="card-sm">
+    <div class="card-name"><code>augment_window()</code></div>
+    <div class="card-desc">Augmentation: rotación de ejes, permutación, ruido gaussiano, time-warping. Invarianza de colocación.</div>
+  </div>
+</div>
+
+<h3>Modelos exportados</h3>
+<table>
+  <thead><tr><th>Fichero</th><th>Tarea</th><th>Tamaño</th><th>Latencia p99</th><th>Métrica clave</th></tr></thead>
+  <tbody>
+    <tr><td><code>models/tflite/har_model_int8.tflite</code></td><td>HAR 6 clases</td><td>105 KB</td><td>~0.09ms</td><td>F1-macro LOSO 0.87</td></tr>
+    <tr><td><code>models/tflite/fall_model_int8.tflite</code></td><td>Fall detector binario</td><td>22 KB</td><td>0.02ms</td><td>Recall 1.0, F1 0.98 (bal.)</td></tr>
+  </tbody>
+</table>
+
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- §3  APP FLUTTER -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2>§3 · App Flutter — <code>app/</code></h2>
+<p>Demo Android on-device. Sensor stream → inferencia TFLite → UI → backend HTTP + ntfy SSE.</p>
+
+<h3>Estructura de ficheros</h3>
+<div class="grid-2">
+  <div class="card">
+    <h3 style="margin-top:0">Sensores e Inferencia</h3>
+    <table style="margin:0">
+      <thead><tr><th>Fichero</th><th>Responsabilidad</th></tr></thead>
+      <tbody>
+        <tr><td><code>sensors/sensor_service.dart</code></td><td>Stream accel+gyro @50Hz via sensors_plus</td></tr>
+        <tr><td><code>inference/har_classifier.dart</code></td><td>Carga har_model_int8.tflite, clasifica ventanas 128×6, dequantiza INT8</td></tr>
+        <tr><td><code>inference/fall_detector.dart</code></td><td>Cascada 3 etapas: SVM threshold → CNN → inmovilidad. 3 modos configurables.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">Servicios y Almacenamiento</h3>
+    <table style="margin:0">
+      <thead><tr><th>Fichero</th><th>Responsabilidad</th></tr></thead>
+      <tbody>
+        <tr><td><code>services/api_service.dart</code></td><td>Cliente HTTP: 8 endpoints del backend</td></tr>
+        <tr><td><code>services/model_update_service.dart</code></td><td>OTA: compara versión, descarga .tflite nuevo de MinIO via API</td></tr>
+        <tr><td><code>services/ntfy_service.dart</code></td><td>Suscripción SSE al topic vitalia-falls-{hash[:8]}</td></tr>
+        <tr><td><code>storage/database_service.dart</code></td><td>SQLite local: sensor_readings, fall_events, server_profiles</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<h3>Pantallas</h3>
+<div class="grid-3">
+  <div class="card-sm">
+    <div class="card-name">HomePage (3 tabs)</div>
+    <div class="card-sub">Tab Actividad · Tab Métricas · Tab Pruebas</div>
+    <div class="card-desc">
+      <strong>Actividad:</strong> actividad actual + confianza, VitaPoints (nivel bronze/silver/gold + racha), monitor SVM, modos detección, gráfico acelerómetro 5s.<br>
+      <strong>Métricas:</strong> specs del modelo HAR y fall, 3 puntos de operación, breakdown por actividad.<br>
+      <strong>Pruebas:</strong> 9 botones que ejercen cada endpoint del backend + tests de inferencia locales.
+    </div>
+  </div>
+  <div class="card-sm">
+    <div class="card-name">SettingsScreen</div>
+    <div class="card-sub">Ajustes de conexión y privacidad</div>
+    <div class="card-desc">Cambiar IP/puerto del backend, gestionar perfiles guardados, borrar datos SQLite locales, botón RGPD "Borrar mis datos del servidor" (Art. 17) con doble confirmación.</div>
+  </div>
+  <div class="card-sm">
+    <div class="card-name">Fall Alert Dialog</div>
+    <div class="card-sub">Dialog bloqueante 30s</div>
+    <div class="card-desc">Se muestra cuando Stage 2 o 3 se activa. Muestra SVM peak, CNN prob, etapa. Si el usuario no responde en 30s → el worker escala la alerta (ntfy + email). Si responde → POST /events/fall/{id}/ack cancela la alerta.</div>
+  </div>
+</div>
+
+<h3>Flujo de datos on-device</h3>
+<div class="flow">
+  <div class="flow-title">Sensor → Inferencia → UI → Backend (cada frame @50Hz)</div>
+  <pre>SensorService.sampleStream
+  │
+  ├─► SlidingWindowBuffer(128, overlap=0.5)
+  │         │ cuando buffer lleno (cada ~1.28s)
+  │         └─► HarClassifier.classify(window) → HarResult{activity, confidence, pts/min}
+  │                   │
+  │             setState() → UI actualiza actividad + icono
+  │             Timer(1min) → PostActivity(activity, 60s) → backend acumula VitaPoints
+  │
+  └─► SlidingWindowBuffer(100, overlap=0.5)
+            │ cuando buffer lleno (cada ~1s)
+            └─► FallDetector.analyze(window)
+                      │
+                      Stage 1: SVM peak > 3.0g ?
+                        NO → FallResult(stage=0)
+                        SÍ → Stage 2: CNN prob > threshold ?
+                               NO → FallResult(stage=1)
+                               SÍ → Stage 3: last 25 samples std < 0.1 ?
+                                      → FallResult(stage=2 o 3, isFall=true)
+                                            │
+                                      DB.insertFallEvent()
+                                      ApiService.postFall() → backend
+                                      showDialog("¿Estás bien?")
+  </pre>
+</div>
+
+<h3>OTA de modelos al arrancar</h3>
+<div class="flow">
+  <div class="flow-title">ModelUpdateService.checkAndUpdate() — ejecutado en _init()</div>
+  <pre>GET /models/latest → {name, version, size_kb, filename}
+  │
+  ├─ version == SharedPrefs["ota_model_version"] ?
+  │       SÍ → usar paths guardados en SharedPrefs (si existen en disco)
+  │       NO → GET /models/{filename} → stream → File(documentsDir/{filename})
+  │                 SharedPrefs["ota_model_version"] = nueva_versión
+  │
+  └─ HarClassifier.load(overridePath: localPath ?? null)
+     FallDetector.load(overridePath: localPath ?? null)
+     fallback a bundled asset si localPath no existe</pre>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- §4  CONEXIÓN APP ↔ BACKEND -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2>§4 · Conexión App ↔ Backend</h2>
+
+<h3>Endpoints HTTP — <code>ApiService</code></h3>
+<table>
+  <thead><tr><th>Endpoint</th><th>Cuándo se llama</th><th>Payload → Respuesta</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><code>GET /health</code></td>
+      <td>Al arrancar, al cambiar IP, periódicamente (icono cloud AppBar)</td>
+      <td>— → <code>{status, db, redis, minio}</code></td>
+    </tr>
+    <tr>
+      <td><code>POST /events/activity</code></td>
+      <td>Timer cada 60s si actividad activa (walking/running/cycling/stairs)</td>
+      <td><code>{user_id_hash, activity, duration_s}</code> → <code>{vitapoints_earned, total_vitapoints, streak_days, level}</code></td>
+    </tr>
+    <tr>
+      <td><code>POST /events/fall</code></td>
+      <td>Cuando FallDetector activa Stage 2+</td>
+      <td><code>{user_id_hash, stage, svm_peak}</code> → <code>{fall_id, status, ack_deadline_s:30}</code></td>
+    </tr>
+    <tr>
+      <td><code>POST /events/fall/{id}/ack</code></td>
+      <td>Usuario pulsa "Estoy bien" en el dialog</td>
+      <td>— → <code>{fall_id, status: "acked"}</code></td>
+    </tr>
+    <tr>
+      <td><code>GET /users/{id}/vitapoints</code></td>
+      <td>Al arrancar (carga VitaPoints persistidos del servidor)</td>
+      <td>— → <code>{total, this_week, streak_days, level}</code></td>
+    </tr>
+    <tr>
+      <td><code>GET /models/latest</code></td>
+      <td>Al arrancar vía ModelUpdateService</td>
+      <td>— → <code>{name, version, size_kb, filename}</code></td>
+    </tr>
+    <tr>
+      <td><code>GET /models/{filename}</code></td>
+      <td>Si versión nueva detectada (OTA download)</td>
+      <td>— → <code>application/octet-stream</code> (stream .tflite)</td>
+    </tr>
+    <tr>
+      <td><code>DELETE /users/{id}/data</code></td>
+      <td>Settings → "Borrar mis datos del servidor" (RGPD Art.17)</td>
+      <td>— → <code>204 No Content</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>ntfy SSE — <code>NtfyService</code></h3>
+<div class="flow">
+  <div class="flow-title">Suscripción SSE al arrancar · reconecta al cambiar IP</div>
+  <pre>NtfyService.subscribe(ip, port=8080)
+  │
+  GET http://{ip}:8080/vitalia-falls-demo_use/sse?since=all
+  │                  ↑ topic = "vitalia-falls-" + userId[:8]
+  │                    ?since=all → recibe mensajes cacheados (24h) si estuvo offline
+  │
+  Stream SSE  →  líneas "data: {json}"
+                         │
+                  NtfyMessage{id, topic, message, title}
+                         │
+               _onNtfyMessage() → ScaffoldMessenger.showSnackBar()
+                                  (rojo 10s, icono ambulancia, título + mensaje del worker)</pre>
+</div>
+
+<div class="note-green">
+  <strong>Loop completo verificable:</strong> Tab Pruebas → "Enviar caída POST /events/fall" → no pulsar "Estoy bien" → esperar 30s → el worker envía ntfy → el snackbar aparece en la app.
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- §5  BACKEND -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2>§5 · Backend — 9 servicios Docker</h2>
+
+<div class="grid-3">
+  <div class="card-sm">
+    <span class="dot dot-green"></span><strong>api</strong> · FastAPI :8000
+    <div class="card-desc" style="margin-top:0.4rem">API REST. Routers: events, vitapoints, models_ota, gdpr. Thread daemon actualiza gauges Prometheus cada 60s desde PostgreSQL + MinIO.</div>
+    <div style="margin-top:0.5rem"><span class="tag tag-green">activo</span></div>
+  </div>
+  <div class="card-sm">
+    <span class="dot dot-blue"></span><strong>db</strong> · PostgreSQL 16
+    <div class="card-desc" style="margin-top:0.4rem">Tablas: users, activity_events (TTL 2 años), fall_events (TTL 90d), vitapoints_ledger, consents. Cascade delete en RGPD.</div>
+    <div style="margin-top:0.5rem"><span class="tag tag-green">activo</span></div>
+  </div>
+  <div class="card-sm">
+    <span class="dot dot-amber"></span><strong>redis</strong> :6379
+    <div class="card-desc" style="margin-top:0.4rem">Cola vitalia:falls (LPUSH desde api, BRPOP desde worker). Buffer asíncrono para el pipeline de alertas.</div>
+    <div style="margin-top:0.5rem"><span class="tag tag-green">activo</span></div>
+  </div>
+  <div class="card-sm">
+    <span class="dot dot-amber"></span><strong>worker</strong>
+    <div class="card-desc" style="margin-top:0.4rem">Consume cola Redis. Espera 30s ACK. Si pending → ntfy + SMTP → alerted. Cron RGPD domingos 03:00 UTC.</div>
+    <div style="margin-top:0.5rem"><span class="tag tag-green">activo</span></div>
+  </div>
+  <div class="card-sm">
+    <span class="dot dot-green"></span><strong>minio</strong> :9000/9001
+    <div class="card-desc" style="margin-top:0.4rem">S3-compatible. Buckets: models/ (TFLite OTA), training-data/ (opt-in), mlflow-artifacts/. model_meta.json con métricas del modelo desplegado.</div>
+    <div style="margin-top:0.5rem"><span class="tag tag-green">activo</span></div>
+  </div>
+  <div class="card-sm">
+    <span class="dot dot-blue"></span><strong>ntfy</strong> :8080
+    <div class="card-desc" style="margin-top:0.4rem">Push notifications. Config server.yml: caché SQLite 24h WAL. Topic vitalia-falls-{hash[:8]}. App suscribe vía SSE.</div>
+    <div style="margin-top:0.5rem"><span class="tag tag-green">activo</span></div>
+  </div>
+  <div class="card-sm">
+    <span class="dot dot-purple"></span><strong>mlflow</strong> :5000
+    <div class="card-desc" style="margin-top:0.4rem">Model registry + tracking. Notebooks 03/04/05 loguean experimentos. Modelos registrados: vitalia-har, vitalia-fall. Artefactos en MinIO.</div>
+    <div style="margin-top:0.5rem"><span class="tag tag-purple">activo (notebooks)</span></div>
+  </div>
+  <div class="card-sm">
+    <span class="dot dot-purple"></span><strong>prometheus</strong> :9090
+    <div class="card-desc" style="margin-top:0.4rem">Scraping /metrics cada 15s. Gauges activos: active_users_24h, fall_fpr_ratio, model_har_f1_macro, model_fall_recall. 5 alertas en alerts.yml.</div>
+    <div style="margin-top:0.5rem"><span class="tag tag-purple">activo</span></div>
+  </div>
+  <div class="card-sm">
+    <span class="dot dot-purple"></span><strong>grafana</strong> :3000
+    <div class="card-desc" style="margin-top:0.4rem">12 paneles: operación (FPR, usuarios, latencia) + row "Calidad del Modelo" (recall/precision/F1/tamaño). Datasource: Prometheus.</div>
+    <div style="margin-top:0.5rem"><span class="tag tag-purple">activo</span></div>
+  </div>
+</div>
+
+<h3>Pipeline fall alert end-to-end</h3>
+<div class="flow">
+  <div class="flow-title">Desde la detección hasta la alerta</div>
+  <pre>App: FallDetector stage ≥ 2
+  │
+  ├─ POST /events/fall → api: INSERT fall_events(status="pending")
+  │                           LPUSH vitalia:falls fall_id
+  │                           → {fall_id, status="pending", ack_deadline_s=30}
+  │
+  ├─ App muestra dialog "¿Estás bien?" (30s)
+  │
+  ├─ Si usuario responde:
+  │     POST /events/fall/{id}/ack → status="acked" → worker no alerta
+  │
+  └─ Si NO responde en 30s:
+        worker BRPOP → sleep(30) → SELECT status
+        status="pending" → _send_ntfy(topic, urgente)
+                         → _send_email(centralita@vitalia.es)
+                         → UPDATE status="alerted"
+        App recibe alerta ntfy vía SSE → snackbar rojo</pre>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- §6  MLOPS PIPELINE -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2>§6 · MLOps Pipeline — train → deploy</h2>
+
+<div class="flow">
+  <div class="flow-title">De notebook a producción</div>
+  <pre>notebook 03_har_training   →  mlflow.start_run()  →  MLflow Experiment "vitalia-har-cnn"
+  log_params(arch, window_size, augment_frac, ...)           │
+  log_metrics(f1_macro_mean, fold_f1 por step, ...)          │
+  log_artifact(confusion_matrix.png)                         │
+  mlflow.keras.log_model(model) + register_model("vitalia-har")
+                                                             │
+notebook 04_fall_detection →  mlflow.start_run()  →  MLflow Experiment "vitalia-fall-cnn"
+  log_metrics(conservative_recall, balanced_f1, ...)         │
+  register_model("vitalia-fall")                             │
+                                                             │
+notebook 05_tflite_benchmark →  mlflow.start_run()  →  MLflow Experiment "vitalia-tflite-compression"
+  log_metrics(size_kb, accuracy_delta, latency_ms, ...)      │
+                                                             │
+  ── PROMOTION (ejecutar cuando se aprueba el modelo) ──     │
+  Pre-checks: accuracy_delta > -0.02, size < 500KB           │
+  Leer métricas del fall run desde mlflow.search_runs()      │
+  Generar model_meta.json:                                   │
+    {version, har:{f1_macro, size_kb}, fall:{recall, precision, f1, size_kb}}
+                                                             ▼
+  mc cp har_model_int8_v1.0.0.tflite  MinIO/models/
+  mc cp fall_model_int8_v1.0.0.tflite MinIO/models/
+  mc cp model_meta.json               MinIO/models/
+                                                             │
+  API (60s loop):                                            │
+    GET model_meta.json → update Prometheus gauges           │
+    vitalia_model_har_f1_macro = 0.969                       │
+    vitalia_model_fall_recall_balanced = 0.997               │
+    vitalia_model_version = 100                              ▼
+                                                        Grafana dashboard
+  App (next startup):
+    GET /models/latest → version != stored → download → Interpreter.fromFile()</pre>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- §7  RGPD -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2>§7 · RGPD — Gobernanza de datos de salud</h2>
+
+<table>
+  <thead><tr><th>Dato</th><th>Dónde</th><th>Retención</th><th>Protección</th></tr></thead>
+  <tbody>
+    <tr><td>Señal cruda accel/gyro (50Hz)</td><td>RAM del dispositivo</td><td>&lt; 10s</td><td><strong>Nunca sale del dispositivo</strong> (RGPD Art. 9)</td></tr>
+    <tr><td>Ventanas procesadas</td><td>RAM del dispositivo</td><td>&lt; 5s</td><td>Nunca sale del dispositivo</td></tr>
+    <tr><td>Evento de actividad {tipo, duración}</td><td>PostgreSQL Frankfurt (EEE)</td><td>2 años</td><td>Pseudonimizado por user_id_hash</td></tr>
+    <tr><td>Alerta de caída {stage, svm_peak}</td><td>PostgreSQL Frankfurt (EEE)</td><td>90 días</td><td>Acceso restringido, cascade delete</td></tr>
+    <tr><td>Datos opt-in reentrenamiento</td><td>MinIO Frankfurt (EEE)</td><td>Hasta revocación</td><td>Anonimizados antes de ingesta</td></tr>
+  </tbody>
+</table>
+
+<div class="grid-3">
+  <div class="card-sm">
+    <div class="card-name">Art. 17 — Derecho al olvido</div>
+    <div class="card-desc"><code>DELETE /users/{id}/data</code> → borra usuario + cascade en PostgreSQL (activity_events, fall_events, vitapoints_ledger, consents) + purga MinIO training-data/{hash}/. Accesible desde Settings en la app.</div>
+  </div>
+  <div class="card-sm">
+    <div class="card-name">DPIA obligatoria</div>
+    <div class="card-desc">Art. 35: tratamiento a escala de datos de salud + perfilado con efectos en póliza. Mitigaciones: on-device inference, pseudonimización, TTL, TLS 1.3, LUKS en disco servidor.</div>
+  </div>
+  <div class="card-sm">
+    <div class="card-name">Sin transferencias internacionales</div>
+    <div class="card-desc">Backend en Hetzner Frankfurt (Alemania, EEE). Sin SCC, sin BCR, sin riesgo Schrems II. Ventaja competitiva frente a soluciones cloud AWS/GCP.</div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- §8  MÉTRICAS CLAVE -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2>§8 · Métricas clave del sistema</h2>
+
+<div style="display:flex; flex-wrap:wrap; gap:0.75rem; margin-bottom:1.5rem;">
+  <div class="metric"><span class="metric-val">105 KB</span><span class="metric-lbl">HAR model INT8</span></div>
+  <div class="metric"><span class="metric-val">22 KB</span><span class="metric-lbl">Fall model INT8</span></div>
+  <div class="metric"><span class="metric-val">0.87</span><span class="metric-lbl">HAR F1-macro LOSO</span></div>
+  <div class="metric"><span class="metric-val">1.000</span><span class="metric-lbl">Fall recall (bal.)</span></div>
+  <div class="metric"><span class="metric-val">0.98</span><span class="metric-lbl">Fall F1 (bal.)</span></div>
+  <div class="metric"><span class="metric-val">0.09ms</span><span class="metric-lbl">HAR latencia CPU</span></div>
+  <div class="metric"><span class="metric-val">0.02ms</span><span class="metric-lbl">Fall latencia CPU</span></div>
+  <div class="metric"><span class="metric-val">0.009mW</span><span class="metric-lbl">Batería media HAR</span></div>
+  <div class="metric"><span class="metric-val">~512€/mes</span><span class="metric-lbl">OpEx 180k usuarios</span></div>
+  <div class="metric"><span class="metric-val">~84k€</span><span class="metric-lbl">CapEx construcción</span></div>
+  <div class="metric"><span class="metric-val">119</span><span class="metric-lbl">Tests pasados</span></div>
+  <div class="metric"><span class="metric-val">9/9</span><span class="metric-lbl">Servicios activos</span></div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- §9  ESTRUCTURA DEL REPOSITORIO -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2>§9 · Estructura del repositorio</h2>
+
+<pre>
+Vitalia Health Insurance/              ← REPO PRINCIPAL
+│
+├── notebooks/                         ← Pipeline ML
+│   ├── 01_eda_activities.ipynb        EDA UCI HAR + MotionSense + PAMAP2
+│   ├── 02_eda_falls.ipynb             EDA SisFall (4505 grabaciones)
+│   ├── 03_fall_baseline.ipynb         Baseline LR + RF LOSO + MLflow
+│   ├── 03_har_training.ipynb          1D-CNN HAR LOSO + MLflow
+│   ├── 04_fall_detection.ipynb        CNN Fall + cascada + MLflow
+│   └── 05_tflite_benchmark.ipynb      Compresión INT8 + promoción OTA + MLflow
+│
+├── src/preprocessing/
+│   └── windowing.py                   resample, sliding_window, compute_svm,
+│                                      detect_impact_peaks, extract_fall_window, augment_window
+│
+├── models/tflite/
+│   ├── har_model_int8.tflite          105 KB — 6 clases actividad
+│   └── fall_model_int8.tflite         22 KB  — detector de caídas binario
+│
+├── app/                               ← Flutter Android demo
+│   ├── lib/
+│   │   ├── main.dart
+│   │   ├── inference/
+│   │   │   ├── har_classifier.dart    TFLite INT8 + dequantización
+│   │   │   └── fall_detector.dart     Cascada 3 etapas configurable
+│   │   ├── sensors/
+│   │   │   └── sensor_service.dart    Stream accel+gyro @50Hz
+│   │   ├── screens/
+│   │   │   ├── home_page.dart         3 tabs: Actividad, Métricas, Pruebas
+│   │   │   └── settings_screen.dart   Backend IP, datos locales, RGPD
+│   │   ├── services/
+│   │   │   ├── api_service.dart       8 endpoints HTTP
+│   │   │   ├── model_update_service.dart  OTA TFLite
+│   │   │   └── ntfy_service.dart      SSE fall alerts
+│   │   └── storage/
+│   │       └── database_service.dart  SQLite: readings, falls, profiles
+│   └── assets/models/
+│       ├── har_model_int8.tflite      Bundled (fallback OTA)
+│       └── fall_model_int8.tflite
+│
+├── data/
+│   ├── raw/                           Datasets descargados (gitignored)
+│   └── processed/                     Arrays .npy + figuras EDA
+│
+└── docs/
+    ├── PLAN.md                        Plan global + trazabilidad requisitos
+    ├── TAREAS_JAIME.md                Tareas Jaime (caídas + app + arquitectura)
+    ├── TAREAS_INIGO.md                Tareas Íñigo (HAR + compresión)
+    ├── MEMORIA_JAIME.md               Secciones 6–10 de la memoria
+    ├── arquitectura_produccion.md     Diagrama arquitectura backend
+    ├── modelo_coste.md                CapEx + OpEx + ROI
+    ├── SERVICIOS_BACKEND.md           Referencia endpoints + Docker para devs Flutter
+    ├── SERVICIOS_BACKEND.html         Versión visual del anterior
+    └── ARQUITECTURA_COMPLETA.html     ← ESTE FICHERO
+
+
+Vitalia Health Insurance Backend/      ← REPO BACKEND (separado)
+    api/         FastAPI + routers + gauge updater
+    worker/      Alert pipeline + RGPD cleanup
+    db/          init.sql
+    ntfy/        server.yml (caché WAL 24h)
+    prometheus/  prometheus.yml + alerts.yml
+    grafana/     provisioning datasource + dashboard 12 paneles
+    docs/        SERVICIOS_BACKEND.md + .html (referencia operadores)
+    api/tests/   99 pytest tests (endpoints + unit)
+    worker/tests/ 20 pytest tests (worker functions)
+</pre>
+
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- §10  ARRANQUE RÁPIDO -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2>§10 · Arranque rápido</h2>
+
+<div class="grid-2">
+  <div class="card">
+    <h3 style="margin-top:0">Backend</h3>
+    <pre style="font-size:0.76rem">cd "Vitalia Health Insurance Backend"
+cp .env.example .env  # rellenar contraseñas
+docker compose up -d --build
+
+# Verificar todos healthy
+docker compose ps
+
+# Health check
+curl http://localhost:8000/health</pre>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">App Flutter</h3>
+    <pre style="font-size:0.76rem">cd "Vitalia Health Insurance/app"
+flutter pub get
+flutter run  # conectar Android por USB
+
+# En la app:
+# Settings → IP del PC en la red local
+# Tab Pruebas → "Health check" para verificar conexión</pre>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">Tests backend</h3>
+    <pre style="font-size:0.76rem">cd "Vitalia Health Insurance Backend/api"
+pip install -r requirements.txt \
+            -r requirements-test.txt
+pip install -r ../worker/requirements.txt
+
+pytest ../api/tests/ ../worker/tests/ -v
+# → 119 passed</pre>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">Notebooks ML</h3>
+    <pre style="font-size:0.76rem">cd "Vitalia Health Insurance"
+python -m venv .venv
+.venv\Scripts\activate      # Windows
+pip install -r requirements.txt
+
+jupyter notebook notebooks/
+
+# Orden: 01 → 02 → 03 (ambos) → 04 → 05
+# 05: sección "Promoción" sube modelos a MinIO</pre>
+  </div>
+</div>
+
+<div class="note">
+  <strong>Puertos expuestos:</strong>
+  API :8000 · MinIO API :9000 · MinIO Console :9001 · ntfy :8080 · MLflow :5000 · Prometheus :9090 · Grafana :3000
+</div>
+
+</div><!-- .max-w -->
+</body>
+</html>
