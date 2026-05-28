@@ -202,15 +202,19 @@ No avanzar a las tareas individuales hasta que estos estén listos.
   - `SensorService → SVM threshold → Fall CNN → alert flow`
   - Probar en dispositivo Android real (o emulador con datos de replay)
 
-- [ ] **B13** Recoger datos del teléfono para validación (V5):
-  1. Instalar **Phyphox** o **Sensor Logger**
-  2. Grabar: caminar, sentado, bajar escaleras
-  3. Simular una caída: dejar caer el teléfono sobre una superficie blanda con cuidado
-  4. Inferir en tiempo real en la app → captura de pantalla o vídeo para la presentación
+- [ ] **B13** Demo en dispositivo Android real (V5):
+  1. `flutter run --release` en el móvil
+  2. Caminar, sentarse, bajar escaleras → verificar que la app clasifica correctamente en tiempo real
+  3. Simular caída (tirar el teléfono sobre superficie blanda) → verificar dialog "¿Estás bien?"
+  4. Captura de pantalla o vídeo corto para la presentación al jurado
 
-- [ ] **B14** **Fallback documental** (si la app no está al 100 %):
-  - Demo alternativa: notebook Python con inferencia frame a frame sobre datos propios
-  - Documentar como "trabajo futuro" en la memoria
+  > La app ya tiene `har_model_int8.tflite` + `fall_model_int8.tflite` cargados,
+  > muestra actividad + confianza en tiempo real y gestiona el flujo de alerta completo.
+  > No se necesita Phyphox ni ninguna app externa.
+
+- [ ] **B14** **Fallback** (si el dispositivo no está disponible):
+  - Grabar pantalla del emulador Android con datos de replay
+  - O capturas estáticas del tab Métricas + tab Pruebas con backend conectado
 
 ---
 
