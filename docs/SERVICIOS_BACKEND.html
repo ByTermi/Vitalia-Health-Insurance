@@ -142,23 +142,23 @@
   </div>
   <div class="svc-card">
     <span class="dot dot-blue"></span><span class="svc-name">ntfy</span>
-    <div class="port">Puerto 8080 (interno)</div>
-    <div class="desc">Push notifications self-hosted. El worker publica aquí la alerta de caída si el usuario no responde.</div>
+    <div class="port">Puerto 8080 · config: ntfy/server.yml</div>
+    <div class="desc">Push notifications self-hosted. Caché SQLite 24h (WAL). Worker publica alerta en <code>vitalia-falls-{hash[:8]}</code>. App Flutter suscribe vía SSE (<code>NtfyService</code>) para recibir notificaciones en tiempo real.</div>
   </div>
   <div class="svc-card">
     <span class="dot dot-purple"></span><span class="svc-name">mlflow</span>
     <div class="port">Puerto 5000</div>
-    <div class="desc">Model registry + experiment tracking. Gestiona qué versión de modelo TFLite sube a MinIO para OTA.</div>
+    <div class="desc">Model registry + experiment tracking. <strong>Activo:</strong> notebooks 03/04/05 loguean experimentos, métricas por fold y artefactos. Sección de promoción en notebook 05 sube .tflite + model_meta.json a MinIO.</div>
   </div>
   <div class="svc-card">
     <span class="dot dot-purple"></span><span class="svc-name">prometheus</span>
     <div class="port">Puerto 9090</div>
-    <div class="desc">Scraping de /metrics cada 15 s. Almacena series temporales de latencia por endpoint y contadores de eventos.</div>
+    <div class="desc">Scraping /metrics cada 15 s. <strong>Activo:</strong> gauges active_users_24h, fall_fpr_ratio, y métricas de calidad del modelo actualizadas cada 60 s. 5 reglas de alerta en prometheus/alerts.yml.</div>
   </div>
   <div class="svc-card">
     <span class="dot dot-purple"></span><span class="svc-name">grafana</span>
     <div class="port">Puerto 3000</div>
-    <div class="desc">Dashboard de monitorización conectado a Prometheus. Visualiza latencia, FPR en producción, VitaPoints acumulados.</div>
+    <div class="desc">Dashboard de monitorización. <strong>Activo:</strong> 12 paneles — 6 de operación + row "Calidad del Modelo Desplegado" con gauges recall/precision/F1/tamaño.</div>
   </div>
 </div>
 
