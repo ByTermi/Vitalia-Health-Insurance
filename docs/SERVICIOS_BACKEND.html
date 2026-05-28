@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Servicios del Backend — Vitalia</title>
+<style>
+  :root {
+    --bg: #0a1628; --surface: #0d1f35; --card: #1a2d4a;
+    --green: #39ff87; --amber: #f59e0b; --red: #ef4444;
+    --blue: #60a5fa; --purple: #a78bfa; --white: #f1f5f9;
+    --muted: rgba(241,245,249,0.5); --border: rgba(255,255,255,0.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--white); font-family: 'Segoe UI', system-ui, sans-serif; padding: 2rem; line-height: 1.6; }
+  h1 { font-size: 1.8rem; color: var(--green); margin-bottom: 0.25rem; }
+  h2 { font-size: 1.2rem; color: var(--blue); margin: 2rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 1rem; color: var(--amber); margin: 1.5rem 0 0.75rem; }
+  .subtitle { color: var(--muted); font-size: 0.9rem; margin-bottom: 2rem; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 1.5rem; }
+  th { background: var(--surface); color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.6rem 0.8rem; text-align: left; }
+  td { padding: 0.65rem 0.8rem; border-bottom: 1px solid var(--border); font-size: 0.85rem; vertical-align: top; }
+  tr:hover td { background: rgba(255,255,255,0.03); }
+  code { background: rgba(255,255,255,0.08); border-radius: 4px; padding: 0.1rem 0.35rem; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.8rem; color: var(--green); }
+  .method { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.72rem; font-weight: 700; font-family: monospace; }
+  .get  { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
+  .post { background: rgba(57,255,135,0.1); color: var(--green); border: 1px solid rgba(57,255,135,0.3); }
+  .del  { background: rgba(239,68,68,0.12); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
+  .badge { display: inline-block; padding: 0.1rem 0.45rem; border-radius: 10px; font-size: 0.7rem; font-weight: 600; }
+  .badge-used { background: rgba(57,255,135,0.1); color: var(--green); }
+  .badge-infra { background: rgba(167,139,250,0.1); color: var(--purple); }
+  .flow { background: var(--surface); border-radius: 10px; padding: 1.25rem 1.5rem; margin-bottom: 1rem; border: 1px solid var(--border); }
+  .flow pre { font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.78rem; color: var(--muted); white-space: pre; overflow-x: auto; }
+  .flow .title { color: var(--amber); font-weight: 700; font-size: 0.9rem; margin-bottom: 0.75rem; }
+  .svc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+  .svc-card { background: var(--card); border-radius: 10px; padding: 1rem 1.25rem; border: 1px solid var(--border); }
+  .svc-card .port { font-size: 0.72rem; color: var(--muted); margin-top: 0.25rem; }
+  .svc-card .desc { font-size: 0.82rem; color: var(--muted); margin-top: 0.5rem; }
+  .svc-name { font-weight: 700; color: var(--white); font-size: 0.95rem; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+  .dot-green { background: var(--green); }
+  .dot-blue  { background: var(--blue); }
+  .dot-amber { background: var(--amber); }
+  .dot-purple{ background: var(--purple); }
+  .dot-red   { background: var(--red); }
+</style>
+</head>
+<body>
+
+<h1>Servicios del Backend</h1>
+<p class="subtitle">Referencia para la app Flutter — qué endpoints consume y de qué contenedores depende</p>
+
+<h2>§1 Endpoints HTTP</h2>
+<table>
+  <thead>
+    <tr><th>Método</th><th>Ruta</th><th>Función</th><th>App Flutter</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><span class="method get">GET</span></td>
+      <td><code>/health</code></td>
+      <td>Estado de api, db, redis, minio</td>
+      <td><span class="badge badge-used">usado</span> icono cloud AppBar + test tab</td>
+    </tr>
+    <tr>
+      <td><span class="method post">POST</span></td>
+      <td><code>/events/activity</code></td>
+      <td>Registra actividad, calcula VitaPoints, devuelve total + nivel</td>
+      <td><span class="badge badge-used">usado</span> timer cada 60 s en home_page</td>
+    </tr>
+    <tr>
+      <td><span class="method post">POST</span></td>
+      <td><code>/events/fall</code></td>
+      <td>Registra caída, encola en Redis para alerta 30 s</td>
+      <td><span class="badge badge-used">usado</span> cascada stage ≥ 2</td>
+    </tr>
+    <tr>
+      <td><span class="method post">POST</span></td>
+      <td><code>/events/fall/{id}/ack</code></td>
+      <td>Cancela alerta — usuario respondió "Estoy bien"</td>
+      <td><span class="badge badge-used">usado</span> dialog caída</td>
+    </tr>
+    <tr>
+      <td><span class="method get">GET</span></td>
+      <td><code>/users/{id}/vitapoints</code></td>
+      <td>Devuelve total, semana, racha y nivel</td>
+      <td><span class="badge badge-used">usado</span> al arrancar la app</td>
+    </tr>
+    <tr>
+      <td><span class="method get">GET</span></td>
+      <td><code>/models/latest</code></td>
+      <td>Metadatos del modelo TFLite más reciente en MinIO</td>
+      <td><span class="badge badge-used">usado</span> OTA al arrancar</td>
+    </tr>
+    <tr>
+      <td><span class="method get">GET</span></td>
+      <td><code>/models/{filename}</code></td>
+      <td>Descarga el .tflite desde MinIO (streaming)</td>
+      <td><span class="badge badge-used">usado</span> si versión nueva en OTA</td>
+    </tr>
+    <tr>
+      <td><span class="method del">DELETE</span></td>
+      <td><code>/users/{id}/data</code></td>
+      <td>Derecho al olvido Art. 17 RGPD — borra usuario en cascada</td>
+      <td><span class="badge badge-used">usado</span> Settings → "Borrar mis datos"</td>
+    </tr>
+    <tr>
+      <td><span class="method get">GET</span></td>
+      <td><code>/metrics</code></td>
+      <td>Métricas Prometheus (latencia, contadores)</td>
+      <td><span class="badge badge-infra">solo infra</span> Prometheus scraping</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>§2 Contenedores Docker</h2>
+<div class="svc-grid">
+  <div class="svc-card">
+    <span class="dot dot-green"></span><span class="svc-name">api</span> (FastAPI)
+    <div class="port">Puerto 8000</div>
+    <div class="desc">API REST principal. Recibe todas las peticiones HTTP de la app. Expone /health y /metrics además de los routers.</div>
+  </div>
+  <div class="svc-card">
+    <span class="dot dot-blue"></span><span class="svc-name">db</span> (PostgreSQL 16)
+    <div class="port">Puerto 5432 (interno)</div>
+    <div class="desc">Persistencia de usuarios, activity_events, fall_events, vitapoints_ledger y consents. TTL enforced por el worker.</div>
+  </div>
+  <div class="svc-card">
+    <span class="dot dot-amber"></span><span class="svc-name">redis</span>
+    <div class="port">Puerto 6379 (interno)</div>
+    <div class="desc">Cola vitalia:falls — buffer entre la API y el worker para el pipeline de alertas de caída.</div>
+  </div>
+  <div class="svc-card">
+    <span class="dot dot-amber"></span><span class="svc-name">worker</span>
+    <div class="port">Sin puerto expuesto</div>
+    <div class="desc">Consume la cola Redis. Espera 30 s ACK. Si no hay respuesta → ntfy + SMTP. Cron RGPD los domingos 03:00.</div>
+  </div>
+  <div class="svc-card">
+    <span class="dot dot-green"></span><span class="svc-name">minio</span>
+    <div class="port">Puertos 9000 / 9001</div>
+    <div class="desc">Almacén S3-compatible. Buckets: models/ (TFLite OTA), training-data/ (opt-in), mlflow-artifacts/.</div>
+  </div>
+  <div class="svc-card">
+    <span class="dot dot-blue"></span><span class="svc-name">ntfy</span>
+    <div class="port">Puerto 8080 (interno)</div>
+    <div class="desc">Push notifications self-hosted. El worker publica aquí la alerta de caída si el usuario no responde.</div>
+  </div>
+  <div class="svc-card">
+    <span class="dot dot-purple"></span><span class="svc-name">mlflow</span>
+    <div class="port">Puerto 5000</div>
+    <div class="desc">Model registry + experiment tracking. Gestiona qué versión de modelo TFLite sube a MinIO para OTA.</div>
+  </div>
+  <div class="svc-card">
+    <span class="dot dot-purple"></span><span class="svc-name">prometheus</span>
+    <div class="port">Puerto 9090</div>
+    <div class="desc">Scraping de /metrics cada 15 s. Almacena series temporales de latencia por endpoint y contadores de eventos.</div>
+  </div>
+  <div class="svc-card">
+    <span class="dot dot-purple"></span><span class="svc-name">grafana</span>
+    <div class="port">Puerto 3000</div>
+    <div class="desc">Dashboard de monitorización conectado a Prometheus. Visualiza latencia, FPR en producción, VitaPoints acumulados.</div>
+  </div>
+</div>
+
+<h2>§3 Flujos end-to-end</h2>
+
+<div class="flow">
+  <div class="title">3.1 · Actividad detectada → VitaPoints</div>
+  <pre>App (timer cada 60 s, si actividad activa)
+  │
+  ├─ POST /events/activity {user_id_hash, activity, duration_s}
+  │         │
+  │         ├─ api  → calcula points = duration_s/60 × POINTS_PER_MINUTE[activity]
+  │         ├─ db   → INSERT activity_event + vitapoints_ledger
+  │         └─ →    {vitapoints_earned, total_vitapoints, streak_days, level}
+  │
+  └─ App actualiza _vitaPoints, _streakDays, _level</pre>
+</div>
+
+<div class="flow">
+  <div class="title">3.2 · Caída detectada → alerta</div>
+  <pre>App (sensor stream)
+  │
+  ├─ Stage 1: SVM > 3 g  →  Stage 2: CNN prob > threshold
+  │
+  ├─ POST /events/fall {user_id_hash, stage, svm_peak}
+  │         ├─ api   → INSERT fall_event (status="pending")
+  │         ├─ redis → LPUSH vitalia:falls fall_id
+  │         └─ →    {fall_id, status="pending", ack_deadline_s=30}
+  │
+  ├─ App muestra dialog "¿Estás bien?" (30 s)
+  │
+  ├─ Si ACK: POST /events/fall/{id}/ack → status="acked" → worker no alerta
+  │
+  └─ Sin ACK: worker espera 30 s → ntfy + SMTP → status="alerted"</pre>
+</div>
+
+<div class="flow">
+  <div class="title">3.3 · OTA de modelos al arrancar</div>
+  <pre>App (inicio)
+  │
+  ├─ GET /models/latest → {name, version, size_kb, filename}
+  │
+  ├─ Si version != SharedPrefs["ota_model_version"]:
+  │     GET /models/{filename} → stream → File(documentsDir/filename)
+  │     SharedPrefs["ota_model_version"] = version
+  │
+  └─ Interpreter.fromFile(path)  [fallback: fromAsset si falla]</pre>
+</div>
+
+<div class="flow">
+  <div class="title">3.4 · Derecho al olvido (RGPD Art. 17)</div>
+  <pre>App (Settings → "Borrar mis datos del servidor")
+  │
+  ├─ DELETE /users/{user_id_hash}/data
+  │         ├─ api  → db.delete(user) CASCADE
+  │         │         → borra: users, activity_events, fall_events,
+  │         │                  vitapoints_ledger, consents
+  │         ├─ minio → remove training-data/{user_id_hash}/*
+  │         └─ → 204 No Content
+  │
+  └─ App: _vitaPoints=0, _streakDays=0, _level="bronze"</pre>
+</div>
+
+</body>
+</html>
