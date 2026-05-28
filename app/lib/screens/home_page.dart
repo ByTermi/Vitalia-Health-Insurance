@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:math' show sin, cos, pi;
+import 'dart:math' show sin, pi;
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../sensors/sensor_service.dart';
@@ -307,159 +307,6 @@ class _HomePageState extends State<HomePage> {
         ),
       );
 
-  void _showIpDialog() async {
-    var profiles = await _db.getAllProfiles();
-    if (!mounted) return;
-
-    final ipCtrl = TextEditingController(text: _api.ip);
-    final portCtrl = TextEditingController(text: _api.port.toString());
-    final nameCtrl = TextEditingController();
-
-    await showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setStateDialog) => AlertDialog(
-          backgroundColor: const Color(0xFF1A2D4A),
-          title: const Text('Conexión al Backend', style: TextStyle(color: Colors.white)),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (profiles.isNotEmpty) ...[
-                    const Text('Perfiles guardados',
-                        style: TextStyle(color: Colors.white54, fontSize: 12)),
-                    const SizedBox(height: 4),
-                    ...profiles.map((p) => ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          dense: true,
-                          title: Text(p.name,
-                              style: const TextStyle(color: Colors.white, fontSize: 13)),
-                          subtitle: Text('${p.ip}:${p.port}',
-                              style: const TextStyle(color: Colors.white54, fontSize: 11)),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.delete_outline,
-                                color: Colors.white38, size: 18),
-                            onPressed: () async {
-                              await _db.deleteProfile(p.id!);
-                              final updated = await _db.getAllProfiles();
-                              setStateDialog(() => profiles = updated);
-                            },
-                          ),
-                          onTap: () async {
-                            Navigator.of(ctx).pop();
-                            await _db.touchProfile(p.id!);
-                            setState(() {
-                              _api.ip = p.ip;
-                              _api.port = p.port;
-                              _backendConnected = false;
-                            });
-                            final ok = await _api.checkHealth();
-                            if (mounted) {
-                              setState(() => _backendConnected = ok);
-                              if (ok) _subscribeNtfy();
-                            }
-                          },
-                        )),
-                    const Divider(color: Colors.white12),
-                    const SizedBox(height: 4),
-                  ],
-                  TextField(
-                    controller: ipCtrl,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: const InputDecoration(
-                      labelText: 'IP del servidor',
-                      labelStyle: TextStyle(color: Colors.white54),
-                      hintText: '10.0.2.2',
-                      hintStyle: TextStyle(color: Colors.white24),
-                      enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.white24)),
-                      focusedBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.greenAccent)),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: portCtrl,
-                    style: const TextStyle(color: Colors.white),
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Puerto',
-                      labelStyle: TextStyle(color: Colors.white54),
-                      hintText: '8000',
-                      hintStyle: TextStyle(color: Colors.white24),
-                      enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.white24)),
-                      focusedBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.greenAccent)),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: nameCtrl,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: const InputDecoration(
-                      labelText: 'Guardar como perfil (nombre)',
-                      labelStyle: TextStyle(color: Colors.white54),
-                      hintText: 'Casa, Trabajo...',
-                      hintStyle: TextStyle(color: Colors.white24),
-                      enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.white24)),
-                      focusedBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.greenAccent)),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Emulador: 10.0.2.2 · Dispositivo físico: IP local del PC',
-                    style: TextStyle(color: Colors.white38, fontSize: 11),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancelar', style: TextStyle(color: Colors.white54)),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.greenAccent),
-              onPressed: () async {
-                final ip = ipCtrl.text.trim();
-                final port = int.tryParse(portCtrl.text.trim()) ?? 8000;
-                final name = nameCtrl.text.trim();
-                if (name.isNotEmpty) {
-                  await _db.insertProfile(ServerProfile(
-                    name: name,
-                    ip: ip,
-                    port: port,
-                    lastUsed: DateTime.now().millisecondsSinceEpoch,
-                  ));
-                }
-                if (!ctx.mounted) return;
-                Navigator.of(ctx).pop();
-                setState(() {
-                  _api.ip = ip;
-                  _api.port = port;
-                  _backendConnected = false;
-                });
-                final ok = await _api.checkHealth();
-                if (mounted) {
-                  setState(() => _backendConnected = ok);
-                  if (ok) _subscribeNtfy();
-                }
-              },
-              child: const Text('Conectar', style: TextStyle(color: Colors.black)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   void dispose() {
     _sensorSub?.cancel();
@@ -646,13 +493,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  static DateTime _sessionStart = DateTime.now();
-  String _sessionDuration() {
-    final diff = DateTime.now().difference(_sessionStart);
-    final m = diff.inMinutes;
-    final s = diff.inSeconds % 60;
-    return '${m}m ${s}s';
-  }
+
 
   Widget _fallStatusCard() {
     final stage1Active = _svmG > FallDetector.svmThreshold;
@@ -1493,7 +1334,7 @@ class _HomePageState extends State<HomePage> {
         name: 'POST /events/activity  (walking, 60s)',
         ok: ok,
         detail: ok
-            ? 'vitapoints_earned: ${res!['vitapoints_earned']}\n'
+            ? 'vitapoints_earned: ${res['vitapoints_earned']}\n'
               'total_vitapoints:  ${res['total_vitapoints']}\n'
               'streak_days:       ${res['streak_days']}\n'
               'level:             ${res['level']}'
@@ -1523,7 +1364,7 @@ class _HomePageState extends State<HomePage> {
             : 'Sin respuesta — backend no alcanzable',
         elapsed: '${sw.elapsedMilliseconds} ms',
       ));
-      if (ok) await _api.ackFall(fallId!); // auto-ACK so worker doesn't alert
+      if (ok) await _api.ackFall(fallId); // auto-ACK so worker doesn't alert
     } catch (e) {
       _addResult(_TestResult(name: 'POST /events/fall', ok: false, detail: 'Error: $e', elapsed: '${sw.elapsedMilliseconds} ms'));
     } finally {
@@ -1638,7 +1479,7 @@ class _HomePageState extends State<HomePage> {
         name: 'GET /users/{id}/vitapoints',
         ok: ok,
         detail: ok
-            ? 'total:       ${vp!.total}\n'
+            ? 'total:       ${vp.total}\n'
               'this_week:   ${vp.thisWeek}\n'
               'streak_days: ${vp.streakDays}\n'
               'level:       ${vp.level}'
@@ -1647,7 +1488,7 @@ class _HomePageState extends State<HomePage> {
       ));
       if (ok && mounted) {
         setState(() {
-          _vitaPoints = vp!.total;
+          _vitaPoints = vp.total;
           _streakDays = vp.streakDays;
           _level = vp.level;
         });
@@ -1671,7 +1512,7 @@ class _HomePageState extends State<HomePage> {
         name: 'GET /models/latest',
         ok: ok,
         detail: ok
-            ? 'name:     ${meta!.name}\n'
+            ? 'name:     ${meta.name}\n'
               'version:  ${meta.version}\n'
               'size_kb:  ${meta.sizeKb}\n'
               'filename: ${meta.filename}'

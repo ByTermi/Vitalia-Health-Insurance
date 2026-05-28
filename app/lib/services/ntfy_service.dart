@@ -50,7 +50,7 @@ class NtfyService {
       ..headers['Accept'] = 'text/event-stream';
 
     _sub = Stream.fromFuture(_client!.send(request))
-        .asyncExpand((response) {
+        .asyncExpand<String>((response) {
           if (response.statusCode != 200) return const Stream.empty();
           return response.stream
               .transform(utf8.decoder)
@@ -58,7 +58,7 @@ class NtfyService {
         })
         .listen(
           _onLine,
-          onError: (_) {},   // swallow errors — service is optional
+          onError: (Object _, StackTrace __) {},  // swallow errors — service is optional
           cancelOnError: false,
         );
   }
