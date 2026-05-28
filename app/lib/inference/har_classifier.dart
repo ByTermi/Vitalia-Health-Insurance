@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:tflite_flutter/tflite_flutter.dart';
 
 // Order MUST match the training class order (notebook 03):
@@ -59,10 +60,17 @@ class HarClassifier {
   Interpreter? _interpreter;
   bool _loaded = false;
 
-  Future<void> load() async {
+  Future<void> load({String? overridePath}) async {
     try {
       final options = InterpreterOptions()..threads = 2;
-      _interpreter = await Interpreter.fromAsset(_modelPath, options: options);
+      if (overridePath != null) {
+        _interpreter = await Interpreter.fromFile(
+          File(overridePath),
+          options: options,
+        );
+      } else {
+        _interpreter = await Interpreter.fromAsset(_modelPath, options: options);
+      }
       _loaded = true;
     } catch (_) {
       _loaded = false;

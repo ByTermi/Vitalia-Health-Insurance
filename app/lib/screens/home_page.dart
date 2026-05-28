@@ -7,6 +7,8 @@ import '../inference/har_classifier.dart';
 import '../inference/fall_detector.dart';
 import '../storage/database_service.dart';
 import '../services/api_service.dart';
+import '../services/model_update_service.dart';
+import 'settings_screen.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -31,7 +33,9 @@ class _HomePageState extends State<HomePage> {
   HarResult? _lastHar;
   FallResult? _lastFall;
   double _svmG = 0.0;
-  int _vitaPoints = 0;
+  double _vitaPoints = 0;
+  int _streakDays = 0;
+  String _level = 'bronze';
   int _activeMinutes = 0;
   final Map<Activity, int> _activityMinutes = {};
   bool _modelsLoaded = false;
@@ -65,15 +69,32 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _init() async {
     await _db.init();
-    await _harClassifier.load();
-    await _fallDetector.load();
     final lastProfile = await _db.getLastUsedProfile();
     if (lastProfile != null) {
       _api.ip = lastProfile.ip;
       _api.port = lastProfile.port;
     }
+
+    // OTA: check for newer models before loading
+    final ota = await ModelUpdateService.checkAndUpdate(_api);
+    await _harClassifier.load(overridePath: ota.harPath);
+    await _fallDetector.load(overridePath: ota.fallPath);
+
     final count = await _db.readingCount();
     final connected = await _api.checkHealth();
+
+    // Load persisted VitaPoints from backend
+    if (connected) {
+      final vp = await _api.getVitaPoints();
+      if (vp != null && mounted) {
+        setState(() {
+          _vitaPoints = vp.total;
+          _streakDays = vp.streakDays;
+          _level = vp.level;
+        });
+      }
+    }
+
     setState(() {
       _modelsLoaded = true;
       _dbReadingCount = count;
@@ -90,17 +111,23 @@ class _HomePageState extends State<HomePage> {
       final activity = _lastHar?.activity;
       if (activity != null && activity.isActive) {
         setState(() {
+          // Optimistic local increment — overwritten by backend response when online
           _vitaPoints += activity.vitaPointsPerMin;
           _activeMinutes++;
           _activityMinutes[activity] = (_activityMinutes[activity] ?? 0) + 1;
         });
-        // Send activity event to backend
+        // Send activity event to backend — use response as source of truth
         _api.postActivity(
           activity: activity.name,
           durationSeconds: 60,
         ).then((res) {
           if (res != null && mounted) {
-            setState(() => _backendConnected = true);
+            setState(() {
+              _backendConnected = true;
+              _vitaPoints = (res['total_vitapoints'] as num).toDouble();
+              _streakDays = res['streak_days'] as int;
+              _level = res['level'] as String;
+            });
           }
         });
       }
@@ -421,8 +448,10 @@ class _HomePageState extends State<HomePage> {
           ),
           IconButton(
             icon: const Icon(Icons.settings_outlined, color: Colors.white54),
-            tooltip: 'Backend IP',
-            onPressed: _showIpDialog,
+            tooltip: 'Ajustes',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+            ),
           ),
         ],
       ),
@@ -517,15 +546,50 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _vitaPointsCard() {
+    final levelColor = _level == 'gold'
+        ? Colors.amber
+        : _level == 'silver'
+            ? Colors.blueGrey.shade300
+            : Colors.brown.shade300;
     return _card(
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      child: Column(
         children: [
-          _stat('VitaPoints', '$_vitaPoints', Icons.star_rounded, Colors.amber),
-          Container(width: 1, height: 50, color: Colors.white12),
-          _stat('Min activos', '$_activeMinutes', Icons.timer_outlined, Colors.greenAccent),
-          Container(width: 1, height: 50, color: Colors.white12),
-          _stat('Sesión', _sessionDuration(), Icons.watch_later_outlined, Colors.lightBlueAccent),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _stat('VitaPoints', _vitaPoints.toStringAsFixed(1), Icons.star_rounded, Colors.amber),
+              Container(width: 1, height: 50, color: Colors.white12),
+              _stat('Racha', '${_streakDays}d', Icons.local_fire_department, Colors.orangeAccent),
+              Container(width: 1, height: 50, color: Colors.white12),
+              _stat('Min activos', '$_activeMinutes', Icons.timer_outlined, Colors.greenAccent),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: levelColor.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: levelColor.withOpacity(0.5)),
+                ),
+                child: Text(
+                  _level.toUpperCase(),
+                  style: TextStyle(
+                      color: levelColor, fontWeight: FontWeight.bold, fontSize: 12),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                _backendConnected ? 'sincronizado' : 'local',
+                style: TextStyle(
+                    color: _backendConnected ? Colors.greenAccent : Colors.white38,
+                    fontSize: 11),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -1188,6 +1252,27 @@ class _HomePageState extends State<HomePage> {
                   color: Colors.orangeAccent,
                   onTap: _testPostFall,
                 ),
+                const SizedBox(height: 8),
+                _testButton(
+                  label: 'VitaPoints  GET /users/{id}/vitapoints',
+                  icon: Icons.star_outlined,
+                  color: Colors.amber,
+                  onTap: _testGetVitaPoints,
+                ),
+                const SizedBox(height: 8),
+                _testButton(
+                  label: 'Último modelo  GET /models/latest',
+                  icon: Icons.system_update_outlined,
+                  color: Colors.purpleAccent,
+                  onTap: _testGetLatestModel,
+                ),
+                const SizedBox(height: 8),
+                _testButton(
+                  label: 'Borrar datos  DELETE /users/{id}/data',
+                  icon: Icons.delete_forever_outlined,
+                  color: Colors.redAccent,
+                  onTap: _testDeleteUserData,
+                ),
               ],
             ),
           ),
@@ -1485,6 +1570,115 @@ class _HomePageState extends State<HomePage> {
             'Stage 1 (SVM) puede haber pasado pero CNN lanzó error.',
         elapsed: '${sw.elapsedMilliseconds} ms',
       ));
+    } finally {
+      if (mounted && !_cancelRequested) setState(() => _testRunning = false);
+    }
+  }
+
+  Future<void> _testGetVitaPoints() async {
+    setState(() { _testRunning = true; _cancelRequested = false; });
+    final sw = Stopwatch()..start();
+    try {
+      final vp = await _api.getVitaPoints();
+      sw.stop();
+      if (_cancelRequested) return;
+      final ok = vp != null;
+      _addResult(_TestResult(
+        name: 'GET /users/{id}/vitapoints',
+        ok: ok,
+        detail: ok
+            ? 'total:       ${vp!.total}\n'
+              'this_week:   ${vp.thisWeek}\n'
+              'streak_days: ${vp.streakDays}\n'
+              'level:       ${vp.level}'
+            : 'Sin respuesta — backend no alcanzable',
+        elapsed: '${sw.elapsedMilliseconds} ms',
+      ));
+      if (ok && mounted) {
+        setState(() {
+          _vitaPoints = vp!.total;
+          _streakDays = vp.streakDays;
+          _level = vp.level;
+        });
+      }
+    } catch (e) {
+      _addResult(_TestResult(name: 'GET /users/{id}/vitapoints', ok: false, detail: 'Error: $e', elapsed: '${sw.elapsedMilliseconds} ms'));
+    } finally {
+      if (mounted && !_cancelRequested) setState(() => _testRunning = false);
+    }
+  }
+
+  Future<void> _testGetLatestModel() async {
+    setState(() { _testRunning = true; _cancelRequested = false; });
+    final sw = Stopwatch()..start();
+    try {
+      final meta = await _api.getLatestModel();
+      sw.stop();
+      if (_cancelRequested) return;
+      final ok = meta != null;
+      _addResult(_TestResult(
+        name: 'GET /models/latest',
+        ok: ok,
+        detail: ok
+            ? 'name:     ${meta!.name}\n'
+              'version:  ${meta.version}\n'
+              'size_kb:  ${meta.sizeKb}\n'
+              'filename: ${meta.filename}'
+            : 'Sin modelos en MinIO o backend no alcanzable',
+        elapsed: '${sw.elapsedMilliseconds} ms',
+      ));
+    } catch (e) {
+      _addResult(_TestResult(name: 'GET /models/latest', ok: false, detail: 'Error: $e', elapsed: '${sw.elapsedMilliseconds} ms'));
+    } finally {
+      if (mounted && !_cancelRequested) setState(() => _testRunning = false);
+    }
+  }
+
+  Future<void> _testDeleteUserData() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF2D0A0A),
+        title: const Text('Borrar datos de demo_user_001',
+            style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'Esto borra permanentemente los datos del usuario demo en el backend. '
+          'Útil para resetear entre demos.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Borrar', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    setState(() { _testRunning = true; _cancelRequested = false; });
+    final sw = Stopwatch()..start();
+    try {
+      final ok = await _api.deleteUserData();
+      sw.stop();
+      if (_cancelRequested) return;
+      _addResult(_TestResult(
+        name: 'DELETE /users/{id}/data',
+        ok: ok,
+        detail: ok
+            ? '204 No Content — todos los datos borrados en cascada'
+            : 'Sin respuesta — backend no alcanzable',
+        elapsed: '${sw.elapsedMilliseconds} ms',
+      ));
+      if (ok && mounted) {
+        setState(() { _vitaPoints = 0; _streakDays = 0; _level = 'bronze'; });
+      }
+    } catch (e) {
+      _addResult(_TestResult(name: 'DELETE /users/{id}/data', ok: false, detail: 'Error: $e', elapsed: '${sw.elapsedMilliseconds} ms'));
     } finally {
       if (mounted && !_cancelRequested) setState(() => _testRunning = false);
     }
