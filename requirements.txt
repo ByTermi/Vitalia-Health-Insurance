@@ -10,3 +10,5 @@ notebook
 tqdm
 h5py
 imbalanced-learn  # SMOTE for fall class imbalance
+mlflow>=2.14       # experiment tracking and model registry
+minio>=7.2         # upload models and model_meta.json to MinIO (promotion step)
