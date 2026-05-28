@@ -44,6 +44,37 @@ class SensorReading {
       );
 }
 
+class ServerProfile {
+  final int? id;
+  final String name;
+  final String ip;
+  final int port;
+  final int lastUsed;
+
+  const ServerProfile({
+    this.id,
+    required this.name,
+    required this.ip,
+    this.port = 8000,
+    required this.lastUsed,
+  });
+
+  Map<String, dynamic> toMap() => {
+        'name': name,
+        'ip': ip,
+        'port': port,
+        'last_used': lastUsed,
+      };
+
+  factory ServerProfile.fromMap(Map<String, dynamic> m) => ServerProfile(
+        id: m['id'] as int?,
+        name: m['name'] as String,
+        ip: m['ip'] as String,
+        port: (m['port'] as int?) ?? 8000,
+        lastUsed: m['last_used'] as int,
+      );
+}
+
 class FallEvent {
   final int? id;
   final int ts;
@@ -81,7 +112,7 @@ class DatabaseService {
     final dbPath = p.join(await getDatabasesPath(), 'vitalia.db');
     _db = await openDatabase(
       dbPath,
-      version: 1,
+      version: 2,
       onCreate: (db, _) async {
         await db.execute('''
           CREATE TABLE sensor_readings (
@@ -104,8 +135,54 @@ class DatabaseService {
           )
         ''');
         await db.execute('CREATE INDEX idx_ts ON sensor_readings(ts)');
+        await _createProfilesTable(db);
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) await _createProfilesTable(db);
       },
     );
+  }
+
+  static Future<void> _createProfilesTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE server_profiles (
+        id        INTEGER PRIMARY KEY AUTOINCREMENT,
+        name      TEXT NOT NULL,
+        ip        TEXT NOT NULL,
+        port      INTEGER NOT NULL DEFAULT 8000,
+        last_used INTEGER NOT NULL
+      )
+    ''');
+  }
+
+  Future<int> insertProfile(ServerProfile p) async {
+    return await _db!.insert('server_profiles', p.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<void> deleteProfile(int id) async {
+    await _db?.delete('server_profiles', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<void> touchProfile(int id) async {
+    await _db?.update(
+      'server_profiles',
+      {'last_used': DateTime.now().millisecondsSinceEpoch},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<List<ServerProfile>> getAllProfiles() async {
+    final rows = await _db?.query('server_profiles', orderBy: 'last_used DESC') ?? [];
+    return rows.map(ServerProfile.fromMap).toList();
+  }
+
+  Future<ServerProfile?> getLastUsedProfile() async {
+    final rows = await _db?.query('server_profiles',
+        orderBy: 'last_used DESC', limit: 1) ?? [];
+    if (rows.isEmpty) return null;
+    return ServerProfile.fromMap(rows.first);
   }
 
   Future<void> insertReading(SensorReading r) async {

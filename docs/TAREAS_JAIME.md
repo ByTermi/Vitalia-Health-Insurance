@@ -128,7 +128,7 @@ No avanzar a las tareas individuales hasta que estos estén listos.
   > Nota: se ha eliminado la dependencia de AWS/cloud. Backend completamente self-hosted
   > en EEE (Hetzner Frankfurt). Ventaja RGPD: sin transferencias internacionales, sin SCC.
 
-- [ ] **B8** **Gobernanza RGPD** (R3) — usar `/legal`:
+- [x] **B8** **Gobernanza RGPD** (R3) — usar `/legal`:
 
   Usar y ampliar esta tabla en la sección de la memoria:
 
@@ -195,7 +195,7 @@ No avanzar a las tareas individuales hasta que estos estén listos.
 
 ## Día 5 — Integración y Validación con Datos Propios (V5)
 
-- [ ] **B11** Recibir `har_model_int8.tflite` de Íñigo → añadir a `assets/models/` junto con `fall_model_int8.tflite`
+- [x] **B11** Recibir `har_model_int8.tflite` de Íñigo → añadir a `assets/models/` junto con `fall_model_int8.tflite`
 
 - [ ] **B12** Completar la integración en la app:
   - `SensorService → windowing → HAR inference → UI`

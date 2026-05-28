@@ -79,14 +79,35 @@ class HarClassifier {
     // UCI body_acc the model trained on. No per-window standardization:
     // on a flat/idle window unit-std amplifies sensor noise into fake motion.
 
-    // Input shape: [1, 128, 6]
-    final input = [window];
-    // Output shape: [1, 6]
-    final output = [List<double>.filled(Activity.values.length, 0.0)];
+    final inputTensor = _interpreter!.getInputTensor(0);
+    final outputTensor = _interpreter!.getOutputTensor(0);
 
-    _interpreter!.run(input, output);
+    final inScale = inputTensor.params.scale;
+    final inZp = inputTensor.params.zeroPoint;
+    final outScale = outputTensor.params.scale;
+    final outZp = outputTensor.params.zeroPoint;
 
-    final probs = output[0];
+    List<double> probs;
+
+    if (inScale == 0.0) {
+      // Float model fallback
+      final input = [window];
+      final output = [List<double>.filled(Activity.values.length, 0.0)];
+      _interpreter!.run(input, output);
+      probs = output[0];
+    } else {
+      // INT8: quantize input
+      final input = [
+        window.map((row) =>
+          row.map((v) => (v / inScale + inZp).round().clamp(-128, 127)).toList()
+        ).toList()
+      ];
+      final outputBuf = [List<int>.filled(Activity.values.length, 0)];
+      _interpreter!.run(input, outputBuf);
+      // Dequantize output
+      probs = outputBuf[0].map((q) => (q - outZp) * outScale).toList();
+    }
+
     final maxIdx = probs.indexOf(probs.reduce((a, b) => a > b ? a : b));
     final activity = Activity.values[maxIdx];
 

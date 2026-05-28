@@ -39,6 +39,7 @@ graphify-out/
 
 # Datasets — raw downloads and archives (too large, download separately)
 data/raw/
+data/compressed/
 *.zip
 
 # Preprocessed numpy arrays (derived from raw, regenerable via notebooks)
