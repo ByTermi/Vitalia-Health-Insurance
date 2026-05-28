@@ -19,9 +19,9 @@ class FallResult {
 enum DetectionMode { conservative, balanced, strict }
 
 const _thresholds = {
-  DetectionMode.conservative: 0.30,
-  DetectionMode.balanced: 0.50,
-  DetectionMode.strict: 0.70,
+  DetectionMode.conservative: 0.55,
+  DetectionMode.balanced: 0.70,
+  DetectionMode.strict: 0.85,
 };
 
 class FallDetector {
@@ -99,11 +99,33 @@ class FallDetector {
   }
 
   double _runCnn(List<List<double>> window) {
-    // Input: [1, 100, 6] float32 — output: [1, 1] float32
-    final input = [window.map((s) => s.map((v) => v.toDouble()).toList()).toList()];
-    final output = [[0.0]];
-    _interpreter!.run(input, output);
-    return output[0][0].clamp(0.0, 1.0);
+    final inputTensor = _interpreter!.getInputTensor(0);
+    final outputTensor = _interpreter!.getOutputTensor(0);
+
+    final inScale = inputTensor.params.scale;
+    final inZp = inputTensor.params.zeroPoint;
+    final outScale = outputTensor.params.scale;
+    final outZp = outputTensor.params.zeroPoint;
+
+    if (inScale == 0.0) {
+      // Float model fallback
+      final input = [window.map((s) => s.map((v) => v.toDouble()).toList()).toList()];
+      final output = [[0.0]];
+      _interpreter!.run(input, output);
+      return (output[0][0] as double).clamp(0.0, 1.0);
+    }
+
+    // Quantize float → int8
+    final input = [
+      window.map((row) =>
+        row.map((v) => (v / inScale + inZp).round().clamp(-128, 127)).toList()
+      ).toList()
+    ];
+
+    final outputBuf = [[0]];
+    _interpreter!.run(input, outputBuf);
+
+    return ((outputBuf[0][0] - outZp) * outScale).clamp(0.0, 1.0);
   }
 
   void dispose() {
