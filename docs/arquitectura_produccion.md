@@ -82,7 +82,7 @@
 | `prometheus` | prom/prometheus | 9090 | Scrape /metrics de api + worker |
 | `grafana` | grafana/grafana-oss | 3000 | Dashboards: fall_fpr, drift, latencia, throughput |
 
-Repo backend separado: `E:\repos_claude_code\Vitalia Health Insurance Backend`
+Repo backend separado: `../Vitalia Health Insurance Backend`
 
 ## Lógica de los endpoints principales
 
