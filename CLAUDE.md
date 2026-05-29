@@ -58,7 +58,7 @@ Objetivo: construir un sistema de **reconocimiento de actividad física (HAR) on
 - **Caídas:** sub-problema binario independiente. Optimizar recall. Cascada: detector de impacto barato → confirmador CNN.
 - **Compresión:** TFLite + cuantización int8. Objetivo: <500 KB, <50 ms latencia, duty-cycled para batería.
 - **RGPD:** procesado 100 % on-device; solo eventos derivados al backend self-hosted en EEE.
-- **Backend de producción:** self-hosted (FastAPI + PostgreSQL + Redis + MinIO + ntfy), sin cloud, en EEE (Hetzner Frankfurt). Repo separado: `E:\repos_claude_code\Vitalia Health Insurance Backend`.
+- **Backend de producción:** self-hosted (FastAPI + PostgreSQL + Redis + MinIO + ntfy), sin cloud, en EEE (Hetzner Frankfurt). Repo separado: `../Vitalia Health Insurance Backend`.
 
 ---
 
@@ -69,7 +69,7 @@ Objetivo: construir un sistema de **reconocimiento de actividad física (HAR) on
 |-------|---------------|
 | `/legal` | Sección RGPD/datos de salud en la memoria — **obligatoria** |
 | `/security` | Revisar privacidad on-device, secrets, exposición de datos |
-| `/serverless-backend` | ~~Arquitectura cloud~~ — **no aplica**: diseño es self-hosted EEE. Ver `E:\repos_claude_code\Vitalia Health Insurance Backend` |
+| `/serverless-backend` | ~~Arquitectura cloud~~ — **no aplica**: diseño es self-hosted EEE. Ver `../Vitalia Health Insurance Backend` |
 | `/graphify` | Generar diagrama de arquitectura para la memoria |
 | `/market-analysis` | Modelo de coste CapEx+OpEx y análisis competitivo (vs Vitality, Generali) |
 | `/cross-platform-dev` | Flutter demo app con TFLite on-device |
@@ -137,7 +137,7 @@ python -m pytest src/
 
 ## Repo backend de producción (separado)
 
-`E:\repos_claude_code\Vitalia Health Insurance Backend`
+`../Vitalia Health Insurance Backend`
 
 Stack self-hosted sin cloud: FastAPI · PostgreSQL · Redis · MinIO · ntfy · MLflow · Prometheus · Grafana.
 Docs: `docs/ARQUITECTURA.md` (plan técnico) · `ARQUITECTURA.html` (explicación visual).

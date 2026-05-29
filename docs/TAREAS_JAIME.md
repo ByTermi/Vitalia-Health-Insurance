@@ -121,7 +121,7 @@ No avanzar a las tareas individuales hasta que estos estén listos.
   - Training Pipeline: local (notebooks) + MLflow — cuándo se reentrena, con qué datos
   - Monitoring: Prometheus + Grafana — drift, FPR en producción
 
-  Repo backend separado: `E:\repos_claude_code\Vitalia Health Insurance Backend`
+  Repo backend separado: `../Vitalia Health Insurance Backend`
   Docs: `docs/ARQUITECTURA.md` + `ARQUITECTURA.html` (listo, ver repo backend).
   Diagrama: en `docs/arquitectura_produccion.md` y en el HTML.
 
