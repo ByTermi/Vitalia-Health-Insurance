@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 import 'package:tflite_flutter/tflite_flutter.dart';
 
 // Order MUST match the training class order (notebook 03):
@@ -57,6 +58,10 @@ class HarClassifier {
   static const int windowSize = 128;
   static const int channels = 6;
 
+  // Below this mean linear-accel SVM the phone is stationary.
+  // Upstairs/walking/running always exceed 0.1 g mean; truly still → <0.03 g.
+  static const double _staticSvmThreshold = 0.05;
+
   Interpreter? _interpreter;
   bool _loaded = false;
 
@@ -83,9 +88,16 @@ class HarClassifier {
     if (!_loaded || _interpreter == null) return null;
     if (window.length != windowSize || window[0].length != channels) return null;
 
-    // Window is gravity-removed accel (g) + gyro (rad/s), matching the
-    // UCI body_acc the model trained on. No per-window standardization:
-    // on a flat/idle window unit-std amplifies sensor noise into fake motion.
+    // Compute mean linear-accel SVM over the window (channels 0-2 = gravity-removed accel).
+    // When the phone is completely still Android's TYPE_LINEAR_ACCELERATION can drift
+    // slightly, producing a near-zero but repetitive signal the CNN mis-reads as "upstairs".
+    // Guard: if mean SVM < threshold the window is stationary → clamp to sitting/standing.
+    double svmSum = 0.0;
+    for (final sample in window) {
+      final ax = sample[0], ay = sample[1], az = sample[2];
+      svmSum += sqrt(ax * ax + ay * ay + az * az);
+    }
+    final meanSvm = svmSum / windowSize;
 
     final inputTensor = _interpreter!.getInputTensor(0);
     final outputTensor = _interpreter!.getOutputTensor(0);
@@ -116,7 +128,15 @@ class HarClassifier {
       probs = outputBuf[0].map((q) => (q - outZp) * outScale).toList();
     }
 
-    final maxIdx = probs.indexOf(probs.reduce((a, b) => a > b ? a : b));
+    final int maxIdx;
+    if (meanSvm < _staticSvmThreshold) {
+      // Phone is stationary — restrict to sitting (3) or standing (4)
+      final si = Activity.sitting.index;
+      final sti = Activity.standing.index;
+      maxIdx = probs[si] >= probs[sti] ? si : sti;
+    } else {
+      maxIdx = probs.indexOf(probs.reduce((a, b) => a > b ? a : b));
+    }
     final activity = Activity.values[maxIdx];
 
     return HarResult(
