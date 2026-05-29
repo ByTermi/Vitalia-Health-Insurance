@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:sensors_plus/sensors_plus.dart';
 
 /// 6-axis sensor sample in g + rad/s.
@@ -31,11 +32,10 @@ class SensorSample {
   /// MotionSense userAcceleration the model trained on.
   List<double> toListLinear() => [lax, lay, laz, gx, gy, gz];
 
-  /// SVM = √(ax² + ay² + az²) in g
-  double get svm =>
-      (ax * ax + ay * ay + az * az) / (9.81 * 9.81);
+  /// SVM = √(ax² + ay² + az²) in g — resting value ≈ 1 g (gravity)
+  double get svm => sqrt(ax * ax + ay * ay + az * az);
 
-  double get svmG => svm.abs();
+  double get svmG => svm;
 }
 
 /// Streams fused accelerometer + gyroscope samples at ~50 Hz.
