@@ -193,6 +193,59 @@ No avanzar a las tareas individuales hasta que estos estén listos.
 
 ---
 
+## Sprint 2 — Mejoras v2: Altitud + Anti-FP + Suavizado
+
+> **Contexto:** el modelo distingue bien las actividades en general, pero (1) al caminar un paso fuerte puede disparar la cascada de caída (falso positivo) y (2) el HAR parpadea entre walking/upstairs/downstairs sin suavizado temporal. La solución común es añadir señal de altitud (barómetro + fallback accel).
+
+### Sincronización con Íñigo antes de empezar
+
+**Sync 1:** acordar la firma exacta de `AltitudeService` (nombres de métodos, unidades, signo de velocidad vertical) antes de que Íñigo integre el gate de altitud en `har_classifier.dart`.
+
+---
+
+- [ ] **J-1** `app/lib/sensors/altitude_service.dart` — **AltitudeService** (infra compartida)
+  - Suscribirse a `barometerEventStream()` de sensors_plus v7; si el móvil no tiene barómetro, `hasBarometer` queda `false`.
+  - Barómetro: calibrar `P0` con las primeras 20 lecturas; convertir presión → altitud con fórmula barométrica; mantener buffer circular de 200 lecturas.
+  - Fallback (sin barómetro): low-pass del accel bruto → vector de gravedad → proyectar `linear_accel` sobre el eje vertical → buffer de aceleración vertical.
+  - API pública (acordada en Sync 1):
+    - `bool get hasBarometer`
+    - `double get verticalVelocityMs` — m/s firmado (+ = subir, − = bajar)
+    - `double altitudeDeltaOverLastSamples(int n)` — metros netos en las últimas n muestras
+    - `void addSample(SensorSample sample)` — necesario para el fallback accel
+    - `void start()` — suscribe al barómetro si existe
+    - `void stop()`
+  - Umbrales a calibrar en Sync 3: stairs gate `|Δh| < 0.25 m` → plano; fall gate `Δh < −0.3 m` o `vVert < −1.0 m/s`.
+
+- [ ] **J-2** `app/lib/inference/fall_detector.dart` — gate de altitud en la cascada
+  - Modificar `analyze()` para aceptar `double? altitudeDeltaM` y `double? verticalVelocityMs`.
+  - Nuevo Stage 2.5 (entre CNN y inmovilidad): si el CNN supera el umbral PERO no hay caída de altitud significativa (`altitudeDeltaM > −0.3` y `verticalVelocityMs > −1.0`), el resultado se queda en `triggeredStage = 2` sin escalar a alerta.
+  - Si `altitudeDeltaM == null` (sin servicio o sin barómetro + fallback poco fiable) → comportamiento actual intacto (no empeorar recall en móviles sin sensor).
+  - Documentar los umbrales como constantes anotadas "calibrar en Sync 3".
+
+- [ ] **J-3** `app/lib/screens/activity_screen.dart` — debounce de alertas de caída
+  - Añadir `DateTime? _lastFallAlertTime` + constante `_fallCooldown = Duration(seconds: 15)`.
+  - En `_onSample`, antes de `_triggerFallAlert()`: comprobar que han pasado al menos `_fallCooldown` desde la última alerta.
+  - Evita que ventanas consecutivas con la misma caída disparen múltiples diálogos.
+
+- [ ] **J-4** `app/lib/inference/har_classifier.dart` — suavizado temporal (voto mayoritario)
+  - Añadir buffer interno circular de los últimos 3 resultados (`List<Activity?>`).
+  - `classify()` sigue devolviendo `HarResult?`, pero la `activity` devuelta es la clase mayoritaria de los últimos 3; la `confidence` es la media de confianza de esa clase.
+  - Si no hay mayoría clara (empate), devolver la predicción más reciente.
+  - Previene parpadeo entre walking/upstairs sin requerir reentreno.
+
+- [ ] **J-5** (bloqueado hasta I-1 de Íñigo) `app/lib/inference/har_classifier.dart` + UI — clase "Quieto"
+  - Renombrar `Activity.sitting` → `Activity.stationary`, eliminar `Activity.standing`.
+  - Nuevo orden enum = `['walking', 'upstairs', 'downstairs', 'stationary', 'running']` (5 clases).
+  - Actualizar `_activityNames`, `_vitaPointsPerMinute`, `isActive`, iconos en `activity_screen.dart`.
+  - **Dependencia:** `har_model_int8.tflite` debe tener 5 salidas en el orden correcto (tarea I-4 de Íñigo).
+
+- [ ] **Sync 3 — Calibración de umbrales de altitud**
+  - Probar en móvil real: subir/bajar escaleras → medir Δh real por ventana.
+  - Simular caída con cojín → medir vVert y Δh en el momento del impacto.
+  - Ajustar constantes en `AltitudeService` y `FallDetector`.
+
+---
+
 ## Día 5 — Integración y Validación con Datos Propios (V5)
 
 - [x] **B11** Recibir `har_model_int8.tflite` de Íñigo → añadir a `assets/models/` junto con `fall_model_int8.tflite`

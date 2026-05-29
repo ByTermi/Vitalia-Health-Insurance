@@ -62,6 +62,11 @@ class HarClassifier {
   // Upstairs/walking/running always exceed 0.1 g mean; truly still → <0.03 g.
   static const double _staticSvmThreshold = 0.05;
 
+  // Temporal smoothing: majority vote over the last N windows (see Sync 2 for N choice).
+  // N=3 means ~3.84 s before a class change is accepted; prevents walking↔stairs flicker.
+  static const int _smoothingN = 3;
+  final List<Activity> _recentActivities = [];
+
   Interpreter? _interpreter;
   bool _loaded = false;
 
@@ -137,13 +142,41 @@ class HarClassifier {
     } else {
       maxIdx = probs.indexOf(probs.reduce((a, b) => a > b ? a : b));
     }
-    final activity = Activity.values[maxIdx];
+    final rawActivity = Activity.values[maxIdx];
+    final rawConfidence = probs[maxIdx];
+
+    // Temporal smoothing: majority vote over last _smoothingN predictions.
+    _recentActivities.add(rawActivity);
+    if (_recentActivities.length > _smoothingN) _recentActivities.removeAt(0);
+
+    final smoothed = _majorityVote(_recentActivities, rawActivity);
+    final smoothedConf = _recentActivities
+        .where((a) => a == smoothed)
+        .fold(0.0, (sum, _) => sum + rawConfidence) /
+        _recentActivities.where((a) => a == smoothed).length;
 
     return HarResult(
-      activity: activity,
-      confidence: probs[maxIdx],
-      vitaPointsPerMinute: _vitaPointsPerMinute[activity] ?? 0,
+      activity: smoothed,
+      confidence: smoothedConf,
+      vitaPointsPerMinute: _vitaPointsPerMinute[smoothed] ?? 0,
     );
+  }
+
+  static Activity _majorityVote(List<Activity> recent, Activity fallback) {
+    if (recent.isEmpty) return fallback;
+    final counts = <Activity, int>{};
+    for (final a in recent) {
+      counts[a] = (counts[a] ?? 0) + 1;
+    }
+    Activity best = fallback;
+    int bestCount = 0;
+    counts.forEach((a, c) {
+      if (c > bestCount) {
+        bestCount = c;
+        best = a;
+      }
+    });
+    return best;
   }
 
   void dispose() {

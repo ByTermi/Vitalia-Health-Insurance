@@ -34,6 +34,12 @@ class FallDetector {
   static const double _immobilityStdThreshold = 0.1;
   static const int _immobilitySamples = 25;
 
+  // Altitude gate (Stage 2.5) — calibrate in Sync 3.
+  // If CNN fires but neither condition is met, escalation stops at stage 2 (no alert).
+  // Null altitude values bypass the gate entirely (preserves recall on devices without sensor).
+  static const double _altDeltaFallThresholdM = -0.30; // net drop in window, metres
+  static const double _vertVelFallThresholdMs = -1.0; // m/s, negative = downward
+
   Interpreter? _interpreter;
   bool _loaded = false;
 
@@ -61,7 +67,15 @@ class FallDetector {
   bool get isLoaded => _loaded;
   double get threshold => _thresholds[mode]!;
 
-  FallResult analyze(List<List<double>> window) {
+  // [altitudeDeltaM] : net altitude change (m) over the fall window, from AltitudeService.
+  //                    Negative = person dropped. Null = no altitude data → gate bypassed.
+  // [verticalVelocityMs]: signed vertical velocity (m/s) at moment of analysis.
+  //                    Null = no altitude data.
+  FallResult analyze(
+    List<List<double>> window, {
+    double? altitudeDeltaM,
+    double? verticalVelocityMs,
+  }) {
     // Stage 1: SVM peak — compare actual magnitude (g), not squared
     double svmPeakG = 0.0;
     for (final s in window) {
@@ -89,6 +103,22 @@ class FallDetector {
           svmPeak: svmPeakG,
           cnnProbability: cnnProb,
           immobilityConfirmed: false);
+    }
+
+    // Stage 2.5: altitude gate — if altitude data available, require evidence of a drop.
+    // A real fall drops altitude; a hard step while walking does not.
+    // Both conditions are checked; either alone is sufficient to confirm fall altitude evidence.
+    if (altitudeDeltaM != null && verticalVelocityMs != null) {
+      final altDrop = altitudeDeltaM < _altDeltaFallThresholdM;
+      final velDrop = verticalVelocityMs < _vertVelFallThresholdMs;
+      if (!altDrop && !velDrop) {
+        // CNN fired but no altitude evidence → stop at stage 2 (no alert dispatched)
+        return FallResult(
+            triggeredStage: 2,
+            svmPeak: svmPeakG,
+            cnnProbability: cnnProb,
+            immobilityConfirmed: false);
+      }
     }
 
     // Stage 3: immobility — std of SVM over last 0.5 s (matches Python: std(SVM[-25:]) < 0.1)
