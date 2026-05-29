@@ -15,7 +15,7 @@ Pipeline de reconocimiento de actividad fisica (HAR) y deteccion de caidas on-de
 Desde el repo Backend:
 
 ```bash
-cd "E:\repos_claude_code\Vitalia Health Insurance Backend"
+cd ../Vitalia\ Health\ Insurance\ Backend
 docker compose -f docker-compose-general.yml up -d --build
 ```
 

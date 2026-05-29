@@ -223,7 +223,7 @@ Estrategia:
 ```
 
 > Backend de producción (docker-compose) en repo separado:
-> `E:\repos_claude_code\Vitalia Health Insurance Backend`
+> `../Vitalia Health Insurance Backend`
 
 ### Gobernanza RGPD (Art. 9 — datos de salud) — tabla explícita
 
