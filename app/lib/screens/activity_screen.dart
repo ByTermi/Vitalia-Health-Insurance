@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../sensors/sensor_service.dart';
 import '../inference/har_classifier.dart';
 import '../inference/fall_detector.dart';
+import '../services/api_service.dart';
 
 class ActivityScreen extends StatefulWidget {
   const ActivityScreen({super.key});
@@ -56,13 +58,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
       if (_currentActivity != null && _currentActivity!.isActive) {
         setState(() {
           _vitaPoints += _harClassifier.isLoaded
-              ? (_currentActivity != null
-                  ? const HarResult(
-                      activity: Activity.walking,
-                      confidence: 1.0,
-                      vitaPointsPerMinute: 2)
-                      .vitaPointsPerMinute
-                  : 0)
+              ? _currentActivity!.vitaPointsPerMin
               : 0;
           _activeMinutes++;
         });
@@ -89,14 +85,22 @@ class _ActivityScreenState extends State<ActivityScreen> {
       final fallResult = _fallDetector.analyze(fallWindow);
       setState(() => _lastSvmPeak = fallResult.svmPeak);
       if (fallResult.isFall && fallResult.triggeredStage >= 2) {
-        _triggerFallAlert(fallResult);
+        unawaited(_triggerFallAlert(fallResult));
       }
     }
   }
 
-  void _triggerFallAlert(FallResult result) {
+  Future<void> _triggerFallAlert(FallResult result) async {
     setState(() => _fallAlert = true);
-    // "¿Estás bien?" — 30 s timeout before escalating
+
+    // Post fall event to backend — worker will alert if not ACKed in 30 s
+    final fallId = await ApiService.instance.postFall(
+      stage: result.triggeredStage,
+      svmPeak: result.svmPeak,
+    );
+
+    if (!mounted) return;
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -117,6 +121,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
             onPressed: () {
               Navigator.of(ctx).pop();
               setState(() => _fallAlert = false);
+              if (fallId != null) ApiService.instance.ackFall(fallId);
             },
             child: const Text('Estoy bien'),
           ),
@@ -127,7 +132,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
             onPressed: () {
               Navigator.of(ctx).pop();
               setState(() => _fallAlert = false);
-              // TODO: trigger emergency notification via backend
+              // No ACK → worker sends ntfy + email after 30 s
             },
             child: const Text('Llamar a emergencias'),
           ),
@@ -194,13 +199,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
       Activity.running: Icons.directions_run,
     };
     final icon = activityIcons[_currentActivity] ?? Icons.device_unknown;
-    final name = _currentActivity != null
-        ? const HarResult(
-            activity: Activity.walking,
-            confidence: 1,
-            vitaPointsPerMinute: 2)
-            .activityName
-        : 'Detecting…';
+    final name = _currentActivity?.displayName ?? 'Detecting…';
 
     return Card(
       color: const Color(0xFF1A2D4A),

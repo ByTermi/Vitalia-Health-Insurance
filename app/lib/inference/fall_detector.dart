@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 import 'package:tflite_flutter/tflite_flutter.dart';
 
 class FallResult {
@@ -61,13 +62,12 @@ class FallDetector {
   double get threshold => _thresholds[mode]!;
 
   FallResult analyze(List<List<double>> window) {
-    // Stage 1: SVM peak
-    double svmPeakSq = 0.0;
+    // Stage 1: SVM peak — compare actual magnitude (g), not squared
+    double svmPeakG = 0.0;
     for (final s in window) {
-      final sq = s[0] * s[0] + s[1] * s[1] + s[2] * s[2];
-      if (sq > svmPeakSq) svmPeakSq = sq;
+      final mag = sqrt(s[0] * s[0] + s[1] * s[1] + s[2] * s[2]);
+      if (mag > svmPeakG) svmPeakG = mag;
     }
-    final svmPeakG = svmPeakSq < 0 ? 0.0 : svmPeakSq;
 
     if (svmPeakG < svmThreshold) {
       return FallResult(
@@ -91,13 +91,17 @@ class FallDetector {
           immobilityConfirmed: false);
     }
 
-    // Stage 3: immobility
+    // Stage 3: immobility — std of SVM over last 0.5 s (matches Python: std(SVM[-25:]) < 0.1)
     final last = window.sublist(window.length - _immobilitySamples);
-    double sumSq = 0.0;
-    for (final s in last) {
-      sumSq += s[0] * s[0] + s[1] * s[1] + s[2] * s[2];
-    }
-    final immobility = (sumSq / _immobilitySamples) < _immobilityStdThreshold;
+    final svms = last
+        .map((s) => sqrt(s[0] * s[0] + s[1] * s[1] + s[2] * s[2]))
+        .toList();
+    final mean = svms.reduce((a, b) => a + b) / svms.length;
+    final variance = svms
+            .map((v) => (v - mean) * (v - mean))
+            .reduce((a, b) => a + b) /
+        svms.length;
+    final immobility = sqrt(variance) < _immobilityStdThreshold;
 
     return FallResult(
         triggeredStage: immobility ? 3 : 2,
