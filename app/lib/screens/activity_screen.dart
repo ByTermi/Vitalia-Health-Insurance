@@ -55,15 +55,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
     _pointsTimer = Timer.periodic(const Duration(minutes: 1), (_) {
       if (_currentActivity != null && _currentActivity!.isActive) {
         setState(() {
-          _vitaPoints += _harClassifier.isLoaded
-              ? (_currentActivity != null
-                  ? const HarResult(
-                      activity: Activity.walking,
-                      confidence: 1.0,
-                      vitaPointsPerMinute: 2)
-                      .vitaPointsPerMinute
-                  : 0)
-              : 0;
+          _vitaPoints += _currentActivity!.vitaPointsPerMin;
           _activeMinutes++;
         });
       }
@@ -194,13 +186,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
       Activity.running: Icons.directions_run,
     };
     final icon = activityIcons[_currentActivity] ?? Icons.device_unknown;
-    final name = _currentActivity != null
-        ? const HarResult(
-            activity: Activity.walking,
-            confidence: 1,
-            vitaPointsPerMinute: 2)
-            .activityName
-        : 'Detecting…';
+    final name = _currentActivity?.displayName ?? 'Detecting…';
 
     return Card(
       color: const Color(0xFF1A2D4A),
