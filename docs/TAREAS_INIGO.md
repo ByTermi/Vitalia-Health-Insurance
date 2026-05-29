@@ -149,6 +149,49 @@ No avanzar a las tareas individuales hasta que estos estén listos.
 
 ---
 
+## Sprint 2 — Mejoras v2: HAR 5 clases + Gate de Altitud
+
+> **Contexto:** el HAR actual (6 clases) confunde walking con upstairs/downstairs y trata sitting+standing como clases separadas aunque valen lo mismo. Mejoras: reentrenar a 5 clases fusionando sitting+standing → stationary; añadir gate de altitud en app para corregir la confusión stairs.
+
+### Sincronización con Jaime antes de empezar
+
+**Sync 1:** Jaime construye `AltitudeService` (J-1). Acordar su API (nombres de métodos, unidades, signo) antes de implementar I-5.
+**Sync 2:** Entregar `har_model_int8.tflite` (5 clases) + confirmar N del suavizado → Jaime integra J-4/J-5.
+
+---
+
+- [ ] **I-1** `notebooks/01_eda_activities.ipynb` + `notebooks/03_har_training.ipynb` — reentrenar HAR a 5 clases
+  - En el mapeo de etiquetas (celdas `cell-15`/`cell-16` de notebook 01): fusionar `sitting (4)` + `standing (5)` → clase única `stationary`.
+  - Nuevo orden de clases: `['walking', 'upstairs', 'downstairs', 'stationary', 'running']` (índices 0-4).
+  - Actualizar `CLASS_NAMES`, `AUG_MULTIPLIERS`, `CLASS_WEIGHT` en el notebook de training. `stationary` tendrá ~13.600 ventanas tras fusión → clase mayoritaria, bajar su peso a ≈ 0.7.
+  - Capa final del CNN: `Dense(5, softmax)` en lugar de `Dense(6)`.
+  - Registrar experimento nuevo en MLflow bajo `vitalia-har-cnn-v2`.
+
+- [ ] **I-2** `notebooks/03_har_training.ipynb` — mejorar separación walking vs stairs
+  - Revisar la matriz de confusión LOSO (guardada en `data/processed/har_confusion_matrix.png`) de la v1 para medir fuga walking↔stairs actual.
+  - Si hay fuga significativa: subir `AUG_MULTIPLIERS` de upstairs/downstairs a 3× (actualmente 2×) y `CLASS_WEIGHT` a 2.5 (actualmente 1.8-2.1).
+  - Evaluar añadir **SVM channel** como 7ª entrada: `√(lax²+lay²+laz²)` (sin gravedad). Si mejora F1 macro > 1%, incluirlo y actualizar `input_shape` → `(128, 7)`. Coordinar con Jaime si se cambia el shape (afecta `har_classifier.dart` línea 59).
+  - Regenerar `data/processed/har_confusion_matrix.png` y `har_f1_per_class.png` para la memoria.
+
+- [ ] **I-3** Definir contrato de suavizado temporal para la app
+  - Probar offline con los datos de validación LOSO: con N=3 ventanas de voto mayoritario, ¿cuánta fuga residual walking↔stairs queda?
+  - Documentar N elegido y threshold de confianza mínima para cambio de clase. Entregar a Jaime (Sync 2).
+
+- [ ] **I-4** `notebooks/05_tflite_benchmark.ipynb` + `src/utils/export_meta.py` — re-exportar TFLite (5 clases)
+  - Exportar `models/tflite/har_model_int8.tflite` y `har_model_fp16.tflite` con salida de 5 clases.
+  - Verificar: tamaño < 500 KB, latencia < 50 ms (objetivos de `CLAUDE.md`).
+  - Ejecutar `export_meta()` para regenerar `models/tflite/model_meta.json` con F1-macro nuevo.
+  - Actualizar `models/VERSIONS.md`.
+
+- [ ] **I-5** (después de Sync 1 con Jaime) `app/lib/inference/har_classifier.dart` — gate de altitud para stairs
+  - Tras el argmax del CNN, aplicar corrección de altitud usando `AltitudeService` (API acordada en Sync 1):
+    - Si predicción ∈ `{upstairs, downstairs}` pero `|altitudeDeltaOverLastSamples(128)| < 0.25 m` → reclasificar a `walking`.
+    - Si predicción = `walking` pero `altitudeDelta > +0.25 m` sostenido → dejar al modelo (o permitir upstairs). Documentar la dirección del gate.
+  - Si `AltitudeService.hasBarometer == false` y fallback poco fiable → no aplicar gate (no degradar recall).
+  - **Dependencia:** `Activity` enum debe tener 5 clases antes de integrar esto (tarea J-5 de Jaime).
+
+---
+
 ## Día 5 — Validación con datos propios (V5)
 
 - [ ] **A9** Recoger datos del teléfono:

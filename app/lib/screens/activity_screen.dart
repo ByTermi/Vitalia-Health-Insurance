@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../sensors/sensor_service.dart';
+import '../sensors/altitude_service.dart';
 import '../inference/har_classifier.dart';
 import '../inference/fall_detector.dart';
 import '../services/api_service.dart';
@@ -15,6 +16,7 @@ class ActivityScreen extends StatefulWidget {
 
 class _ActivityScreenState extends State<ActivityScreen> {
   final _sensorService = SensorService();
+  final _altitudeService = AltitudeService();
   final _harBuffer = SlidingWindowBuffer(
       windowSize: 128, overlap: 0.5, rowMapper: (s) => s.toListLinear());
   final _fallBuffer = SlidingWindowBuffer(windowSize: 100, overlap: 0.5);
@@ -34,6 +36,10 @@ class _ActivityScreenState extends State<ActivityScreen> {
   DateTime? _activityStartTime;
   Timer? _pointsTimer;
 
+  // Debounce: minimum gap between consecutive fall alerts (J-3).
+  DateTime? _lastFallAlertTime;
+  static const _fallCooldown = Duration(seconds: 15);
+
   bool _modelsLoaded = false;
 
   @override
@@ -50,6 +56,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
   }
 
   void _startSensors() {
+    _altitudeService.start();
     _sensorService.start();
     _sensorSub = _sensorService.sampleStream.listen(_onSample);
 
@@ -65,6 +72,8 @@ class _ActivityScreenState extends State<ActivityScreen> {
   }
 
   void _onSample(SensorSample sample) {
+    _altitudeService.addSample(sample);
+
     // HAR window
     final harWindow = _harBuffer.addSample(sample);
     if (harWindow != null && _harClassifier.isLoaded) {
@@ -77,13 +86,26 @@ class _ActivityScreenState extends State<ActivityScreen> {
       }
     }
 
-    // Fall detection window
+    // Fall detection window — pass altitude evidence (J-2).
+    // AltitudeService uses barometer when available, accel fallback otherwise.
+    // Accel integration is reliable for the short 2 s fall window.
     final fallWindow = _fallBuffer.addSample(sample);
     if (fallWindow != null) {
-      final fallResult = _fallDetector.analyze(fallWindow);
+      final fallResult = _fallDetector.analyze(
+        fallWindow,
+        altitudeDeltaM: _altitudeService.altitudeDeltaOverLastSamples(100),
+        verticalVelocityMs: _altitudeService.verticalVelocityMs,
+      );
       setState(() => _lastSvmPeak = fallResult.svmPeak);
+
+      // Debounce: suppress re-trigger within cooldown window (J-3).
       if (fallResult.isFall && fallResult.triggeredStage >= 2) {
-        unawaited(_triggerFallAlert(fallResult));
+        final now = DateTime.now();
+        if (_lastFallAlertTime == null ||
+            now.difference(_lastFallAlertTime!) > _fallCooldown) {
+          _lastFallAlertTime = now;
+          unawaited(_triggerFallAlert(fallResult));
+        }
       }
     }
   }
@@ -142,6 +164,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
   @override
   void dispose() {
     _sensorSub?.cancel();
+    _altitudeService.stop();
     _sensorService.dispose();
     _harClassifier.dispose();
     _fallDetector.dispose();
@@ -292,7 +315,10 @@ class _ActivityScreenState extends State<ActivityScreen> {
             Text(
               'HAR model: ${_harClassifier.isLoaded ? "loaded" : "not available"}\n'
               'Fall model: ${_fallDetector.isLoaded ? "loaded" : "not available"}\n'
-              'Last SVM peak: ${_lastSvmPeak.toStringAsFixed(2)} g',
+              'Last SVM peak: ${_lastSvmPeak.toStringAsFixed(2)} g\n'
+              'Altitude sensor: ${_altitudeService.hasBarometer ? "barometer" : "accel fallback"}\n'
+              'Vert vel: ${_altitudeService.verticalVelocityMs.toStringAsFixed(2)} m/s  '
+              'Δh(2s): ${_altitudeService.altitudeDeltaOverLastSamples(100).toStringAsFixed(2)} m',
               style: TextStyle(
                   color: Colors.white.withOpacity(0.6),
                   fontSize: 11,
