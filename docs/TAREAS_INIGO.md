@@ -192,6 +192,23 @@ No avanzar a las tareas individuales hasta que estos estén listos.
 
 ---
 
+- [ ] **I-6** (V5 — valorado) Validación con datos propios
+  - Grabar ~5 min/actividad con Phyphox o Sensor Logger (caminar, correr, escaleras, sentado).
+  - Exportar CSV `accel_x/y/z, gyro_x/y/z, timestamp` → procesar con `windowing.py` → inferir con `har_model_int8.tflite`.
+  - Documentar: qué actividades falla el modelo, diferencia bolsillo vs mano, casos de confusión walking↔stairs.
+  - (Equivale a A9+A10 ya en el sprint original — marcar como misma tarea.)
+
+- [ ] **I-7** Sincronizar docs con clases reales
+  - Verificar que ninguna sección de la memoria dice "6 clases incl. cycling" sin aclarar que cycling = trabajo futuro.
+  - Revisar §§1-5 de la memoria una vez terminados: asegurarse de que el set de clases objetivo es `[walking, upstairs, downstairs, stationary, running]` (5 clases, Sprint 2).
+
+- [ ] **I-8** (opcional, si sobra tiempo) Integrar PAMAP2 para clase cycling
+  - Descargar PAMAP2 #231 → `data/raw/PAMAP2/`, resamplear 100→50 Hz.
+  - Añadir clase `cycling` al notebook de training (6ª clase), reentrenar, re-exportar TFLite.
+  - Solo si I-1 a I-5 están cerrados y hay tiempo antes del Día 6.
+
+---
+
 ## Día 5 — Validación con datos propios (V5)
 
 - [ ] **A9** Recoger datos del teléfono:

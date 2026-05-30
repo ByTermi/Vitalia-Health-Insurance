@@ -16,10 +16,10 @@ Esta tabla mapea cada requisito explícito del enunciado a la sección o tarea q
 |-----------|------|-----------------|-------------|
 | Clase: estático (sentado/parado) | Funcional | §2 + datasets UCI HAR | Íñigo |
 | Clase: caminando | Funcional | §2 + datasets UCI HAR | Íñigo |
-| Clase: corriendo | Funcional | PAMAP2/WISDM + A3 | Íñigo |
-| Clase: ciclismo (bici real) | Funcional | PAMAP2 + A3 | Íñigo |
+| Clase: corriendo | Funcional | MotionSense (jogging) + A3 | Íñigo |
+| Clase: ciclismo (bici real) | Funcional | **No implementado en MVP** — PAMAP2 pendiente (ver §8) | Íñigo (futuro) |
 | Clase: subir/bajar escaleras | Funcional | UCI HAR + A3 | Íñigo |
-| Detección de caídas (segmento 65+) | Funcional | §4.3 + B1–B6 + SisFall | Jaime |
+| Detección de caídas (segmento 65+) | Funcional | §4.3 + B1–B6 + SisFall (MobiAct = futuro) | Jaime |
 | R1: modelo on-device (sin stream) + razonar tamaño | Técnico | §4.4 compresión + A6–A7 | Íñigo |
 | R2: robustez variabilidad colocación (bolsillo/mano/brazalete/bolso) | Técnico | §4.1 preprocesado + augmentation + A-aug | Íñigo |
 | R3: RGPD — qué datos, dónde, cuánto tiempo | Legal | §5 tabla RGPD + B8 | Jaime |
@@ -85,9 +85,10 @@ Vitalia tiene fraude del ~35 % en autoregistro de actividad física. Queremos in
 |-----|---------|----------|----|-------|
 | **Actividades (base)** | UCI HAR #240 | Accel+Gyro — smartphone cintura | 50 | Walk, upstairs, downstairs, sit, stand, lay |
 | **Actividades (robustez)** | MotionSense | Accel+Gyro — smartphone bolsillo | 50 | Mismo placement que el target — clave para invarianza |
-| **Running + Cycling** | PAMAP2 #231 | Accel+Gyro body-worn | 100 → 50 | Resamplear a 50 Hz |
-| **Caídas (primario)** | MobiAct v2 | Accel+Gyro — smartphone bolsillo | ~87 → 50 | 4 tipos de caída + 12 ADL |
-| **Caídas (ancianos)** | SisFall | Accel+Gyro (cintura) | 200 → 50 | Único con 15 sujetos ancianos (60–75 años) |
+| **Running** | MotionSense (jogging) | Accel+Gyro — smartphone bolsillo | 50 | Incluido en MotionSense; clase *running* ya entrenada |
+| **Cycling** | PAMAP2 #231 | Accel+Gyro body-worn | 100 → 50 | **No implementado en MVP** — trabajo futuro (ver §8 Limitaciones) |
+| **Caídas (primario + ancianos)** | SisFall | Accel+Gyro (cintura) | 200 → 50 | 38 sujetos incl. 15 ancianos (60–75 años) — segmento 65+ del enunciado |
+| **Caídas (bolsillo, futuro)** | MobiAct v2 | Accel+Gyro — smartphone bolsillo | ~87 → 50 | **No adquirido** — requiere solicitud form. oficial HMU; trabajo futuro para robustez de placement |
 | **Validación propia** | Teléfonos equipo | Smartphone nativo | Nativo | Phyphox / Sensor Logger |
 
 ### Estrategia de unificación
@@ -275,8 +276,8 @@ Estrategia:
 
 | | Íñigo | Jaime |
 |--|-------|-------|
-| **Foco** | Modelo HAR (6 clases) + compresión móvil | Fall detector + arquitectura producción + app Flutter |
-| **Datasets** | UCI HAR, MotionSense, PAMAP2/WISDM | MobiAct v2, SisFall |
+| **Foco** | Modelo HAR (5 clases) + compresión móvil | Fall detector + arquitectura producción + app Flutter |
+| **Datasets** | UCI HAR, MotionSense | SisFall (MobiAct = futuro) |
 | **Modelo** | 1D-CNN actividades → TFLite + cuantización | CNN binario caídas → TFLite + threshold tuning |
 | **Demo** | Entrega los .tflite a Jaime | Integra ambos modelos en la app Flutter |
 | **Memoria** | Secciones 1–5: datasets, preprocesado, HAR, evaluación, benchmark | Secciones 6–10: caídas, FP/FN, arquitectura, RGPD, coste |
@@ -316,6 +317,19 @@ Ver detalles en `docs/TAREAS_INIGO.md` y `docs/TAREAS_JAIME.md`.
 - [ ] `app/` — Flutter app con inferencia on-device funcional
 - [ ] `docs/MEMORIA.pdf` — Memoria técnica completa (ES)
 - [ ] Presentación (slides) para el jurado
+
+---
+
+## 8. Limitaciones conocidas del MVP
+
+| Limitación | Impacto | Trabajo futuro |
+|------------|---------|----------------|
+| **Sin clase cycling** | Enunciado la menciona; no entrenada (PAMAP2 no integrado) | Integrar PAMAP2, resamplear 100→50 Hz, reentrenar HAR |
+| **Caídas solo con SisFall** | Sin datos de smartphone en bolsillo (placement distinto) | Solicitar MobiAct v2 (form HMU); añadir ADLs vigorosos como hard-negatives |
+| **Sin validación datos propios** | V5 del enunciado pendiente | Grabar con Phyphox + inferir con TFLite |
+| **5 clases (Sprint 2)** | sitting+standing aún separados en modelo v1; fusión a *stationary* en curso | Íñigo: tarea I-1 (reentrenar a 5 clases) |
+
+> Estas limitaciones se presentan proactivamente al jurado — la transparencia técnica es parte del argumento de robustez.
 
 ---
 

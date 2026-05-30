@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Entregables — Vitalia Health Insurance MVP</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #0d1117;
+    color: #e6edf3;
+    line-height: 1.6;
+    padding: 32px 24px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  h1 { font-size: 1.7rem; font-weight: 700; color: #58a6ff; margin-bottom: 4px; }
+  .subtitle { color: #8b949e; font-size: 0.95rem; margin-bottom: 36px; }
+
+  h2 {
+    font-size: 1.05rem; font-weight: 600; color: #c9d1d9;
+    margin: 36px 0 14px; text-transform: uppercase; letter-spacing: .06em;
+    border-bottom: 1px solid #21262d; padding-bottom: 6px;
+  }
+
+  /* ── Status badges ── */
+  .badge {
+    display: inline-block; padding: 2px 9px; border-radius: 12px;
+    font-size: 0.78rem; font-weight: 600; white-space: nowrap;
+  }
+  .done   { background: #0c2a1a; color: #3fb950; border: 1px solid #238636; }
+  .wip    { background: #1c2a1c; color: #d29922; border: 1px solid #9e6a03; }
+  .todo   { background: #1c1c2a; color: #8b949e; border: 1px solid #30363d; }
+  .future { background: #1a1a2a; color: #6e76e5; border: 1px solid #3b3b8c; }
+
+  /* ── Tables ── */
+  table { width: 100%; border-collapse: collapse; font-size: 0.875rem; margin-bottom: 8px; }
+  th {
+    background: #161b22; color: #8b949e; font-weight: 600;
+    text-align: left; padding: 10px 14px; border-bottom: 1px solid #30363d;
+    font-size: 0.8rem; text-transform: uppercase; letter-spacing: .05em;
+  }
+  td { padding: 10px 14px; border-bottom: 1px solid #21262d; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: #161b22; }
+
+  /* ── Highlight boxes ── */
+  .banner {
+    border-radius: 10px; padding: 18px 22px; margin-bottom: 28px;
+    display: flex; gap: 14px; align-items: flex-start;
+  }
+  .banner-green { background: #0c2a1a; border: 1.5px solid #3fb950; }
+  .banner-blue  { background: #0c1a2a; border: 1.5px solid #1f6feb; }
+  .banner-icon  { font-size: 1.8rem; line-height: 1; }
+  .banner-text h3 { font-size: 0.97rem; font-weight: 700; margin-bottom: 4px; }
+  .banner-green .banner-text h3 { color: #3fb950; }
+  .banner-blue  .banner-text h3 { color: #58a6ff; }
+  .banner-text p { font-size: 0.875rem; color: #8b949e; }
+
+  /* ── Pill list for extras ── */
+  .pill-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .pill {
+    background: #161b22; border: 1px solid #30363d; border-radius: 20px;
+    padding: 4px 14px; font-size: 0.82rem; color: #c9d1d9;
+  }
+  .pill-gold { border-color: #9e6a03; color: #d29922; background: #1c2a1c; }
+
+  /* ── Person tag ── */
+  .person-inigo { color: #58a6ff; font-weight: 600; font-size: 0.82rem; }
+  .person-jaime { color: #3fb950; font-weight: 600; font-size: 0.82rem; }
+  .person-both  { color: #d29922; font-weight: 600; font-size: 0.82rem; }
+
+  code {
+    background: #161b22; border: 1px solid #30363d; padding: 1px 6px;
+    border-radius: 4px; font-family: 'Consolas', monospace; font-size: 0.82rem;
+    color: #e6edf3;
+  }
+
+  .note { color: #8b949e; font-size: 0.82rem; font-style: italic; margin-top: 6px; }
+
+  .section-card {
+    background: #161b22; border: 1px solid #30363d; border-radius: 10px;
+    overflow: hidden; margin-bottom: 20px;
+  }
+</style>
+</head>
+<body>
+
+<h1>Vitalia Health Insurance — Panel de Entregables</h1>
+<p class="subtitle">Caso 06 · Equipo Íñigo + Jaime · Competición vs Santi-Sheimae</p>
+
+<div class="banner banner-blue">
+  <div class="banner-icon">🎯</div>
+  <div class="banner-text">
+    <h3>Objetivo del entregable</h3>
+    <p>MVP funcional (modelo on-device + app Flutter demo) <strong>+</strong> arquitectura de producción teórica con estimación de coste real. El jurado (compañeros) valora <strong>precio · robustez · ajuste al contexto</strong>.</p>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════ -->
+<h2>1 · Entregables obligatorios del enunciado</h2>
+
+<div class="section-card">
+<table>
+  <thead>
+    <tr>
+      <th>Código</th>
+      <th>Qué pide el enunciado</th>
+      <th>Cómo lo cubrimos</th>
+      <th>Artefacto</th>
+      <th>Estado</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>E1</strong></td>
+      <td>Modelo funcional: ventana accel+gyro → clasifica actividad + detecta caídas</td>
+      <td>1D-ResNet HAR (5 clases) + CNN fall detector binario</td>
+      <td><code>har_model_int8.tflite</code> · <code>fall_model_int8.tflite</code></td>
+      <td><span class="badge wip">En curso</span></td>
+    </tr>
+    <tr>
+      <td><strong>E2</strong></td>
+      <td>Demostrar funcionamiento sobre datos de test</td>
+      <td>LOSO cross-validation (54 sujetos HAR, 38 SisFall). Matriz confusión + F1 por clase</td>
+      <td><code>03_har_training.ipynb</code> · <code>04_fall_detection.ipynb</code></td>
+      <td><span class="badge done">Hecho</span></td>
+    </tr>
+    <tr>
+      <td><strong>E3</strong></td>
+      <td>Razonar viabilidad despliegue en móvil real</td>
+      <td>TFLite INT8: HAR &lt;500 KB, fall 22 KB, latencia &lt;50 ms. Batería: &lt;5 mW, &lt;1% batería/h adicional vs GPS (100 mW)</td>
+      <td><code>05_tflite_benchmark.ipynb</code> · §4.4 memoria</td>
+      <td><span class="badge done">Hecho</span></td>
+    </tr>
+    <tr>
+      <td><strong>E4</strong></td>
+      <td>Arquitectura producción teórica + estimación de coste construir y mantener</td>
+      <td>FastAPI + PostgreSQL + Redis + MinIO + MLflow + Prometheus, self-hosted EEE. CapEx ~34k€ + OpEx ~512€/mes</td>
+      <td><code>docs/arquitectura_produccion.md</code> · §5 y §10 memoria</td>
+      <td><span class="badge done">Hecho</span></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ════════════════════════════════════════════════════ -->
+<h2>2 · Aspectos especialmente valorados (V1–V6)</h2>
+
+<div class="section-card">
+<table>
+  <thead>
+    <tr>
+      <th>Código</th>
+      <th>Qué valoran</th>
+      <th>Nuestra respuesta</th>
+      <th>Dónde</th>
+      <th>Estado</th>
+      <th>Quién</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>V1</strong></td>
+      <td>Estrategia de ventaneo + justificación</td>
+      <td>128 samples @50 Hz (2.56 s), 50% overlap, centrado en pico para caídas. Justificado vs alternativas en §4.1</td>
+      <td><code>windowing.py</code> · §4.1 memoria</td>
+      <td><span class="badge done">Hecho</span></td>
+      <td><span class="person-inigo">Íñigo</span></td>
+    </tr>
+    <tr>
+      <td><strong>V2</strong></td>
+      <td>Arquitectura NN + por qué vs alternativas</td>
+      <td>1D-ResNet CNN. Tabla comparativa RF/SVM vs LSTM vs Transformer vs CNN+GRU con pros/contras on-device</td>
+      <td><code>03_har_training.ipynb</code> · §4.2 memoria</td>
+      <td><span class="badge done">Hecho</span></td>
+      <td><span class="person-inigo">Íñigo</span></td>
+    </tr>
+    <tr>
+      <td><strong>V3</strong></td>
+      <td>Trade-off FP/FN en caídas — explícito</td>
+      <td>Curva Precision-Recall, 3 puntos operación (conservador 65+ / equilibrado / estricto). Cascade + prompt "¿Estás bien?" como última barrera FP</td>
+      <td><code>04_fall_detection.ipynb</code> · §6-7 memoria</td>
+      <td><span class="badge done">Hecho</span></td>
+      <td><span class="person-jaime">Jaime</span></td>
+    </tr>
+    <tr>
+      <td><strong>V4</strong></td>
+      <td>Decisiones para modelo ligero en móvil</td>
+      <td>GlobalAvgPool (no Flatten), INT8 post-training quantization, duty-cycling 1 ventana/1.28s HAR + Stage 1 siempre-activo barato</td>
+      <td><code>05_tflite_benchmark.ipynb</code> · §4.4</td>
+      <td><span class="badge done">Hecho</span></td>
+      <td><span class="person-inigo">Íñigo</span></td>
+    </tr>
+    <tr>
+      <td><strong>V5</strong></td>
+      <td>Validación con datos propios (smartphones del equipo)</td>
+      <td>Grabar con Phyphox ~5 min/actividad, inferir con TFLite, analizar errores</td>
+      <td>Pendiente</td>
+      <td><span class="badge todo">Pendiente</span></td>
+      <td><span class="person-both">Ambos</span></td>
+    </tr>
+    <tr>
+      <td><strong>V6</strong></td>
+      <td>Caídas como sub-problema binario documentado</td>
+      <td>Explicado en §6.1: desbalanceo extremo (1:12.5), asimetría FN/FP, ventaneo diferente (100 vs 128). Documentado en §6 memoria</td>
+      <td>§6.1 memoria · §4.3 plan</td>
+      <td><span class="badge done">Hecho</span></td>
+      <td><span class="person-jaime">Jaime</span></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ════════════════════════════════════════════════════ -->
+<h2>3 · Requisitos técnicos del enunciado (R1–R6)</h2>
+
+<div class="section-card">
+<table>
+  <thead>
+    <tr>
+      <th>Código</th>
+      <th>Restricción</th>
+      <th>Nuestra solución</th>
+      <th>Estado</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>R1</strong></td>
+      <td>On-device, sin stream continuo a la nube</td>
+      <td>TFLite INT8 on-device. Solo <em>eventos derivados</em> salen del móvil: <code>{activity, duration_min}</code></td>
+      <td><span class="badge done">Hecho</span></td>
+    </tr>
+    <tr>
+      <td><strong>R2</strong></td>
+      <td>Robustez ante variabilidad de colocación (bolsillo / mano / brazalete / bolso)</td>
+      <td>Signal Vector Magnitude (SVM) invariante a orientación + augmentation: rotación de ejes, ruido gaussiano σ=0.01g, time-warping ±10%, escalado magnitud ×0.8–1.2</td>
+      <td><span class="badge done">Hecho</span></td>
+    </tr>
+    <tr>
+      <td><strong>R3</strong></td>
+      <td>RGPD — datos de salud (Art. 9): qué, dónde, cuánto tiempo</td>
+      <td>Señal cruda: <strong>nunca sale del móvil</strong>. Eventos: PostgreSQL EEE 2 años pseudonimizados. Alertas caída: 90 días. DPIA obligatoria. Sin transferencias internacionales.</td>
+      <td><span class="badge done">Hecho</span></td>
+    </tr>
+    <tr>
+      <td><strong>R4</strong></td>
+      <td>Trade-off FN/FP en caídas — razonar y gestionar</td>
+      <td>3 modos (conservador/equilibrado/estricto) según segmento de asegurado. Umbrales CNN: 0.55 / 0.65 / 0.80. Cascada 3 etapas + gate altitud + blanking + debounce + prompt usuario</td>
+      <td><span class="badge done">Hecho</span></td>
+    </tr>
+    <tr>
+      <td><strong>R5</strong></td>
+      <td>Datasets públicos de accel/gyro (no datos propios Vitalia)</td>
+      <td>UCI HAR #240 · MotionSense · SisFall. Todos públicos, libres, documentados</td>
+      <td><span class="badge done">Hecho</span></td>
+    </tr>
+    <tr>
+      <td><strong>R6</strong></td>
+      <td>Estimar consumo de batería</td>
+      <td>&lt;5 mW en ARM Cortex-A55 con duty-cycling. Comparación: GPS continuo ≈100 mW. Inferencia añade &lt;1% batería/hora adicional.</td>
+      <td><span class="badge done">Hecho</span></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ════════════════════════════════════════════════════ -->
+<h2>4 · Extras y diferenciadores vs Santi-Sheimae</h2>
+
+<div class="banner banner-green">
+  <div class="banner-icon">⚡</div>
+  <div class="banner-text">
+    <h3>Lo que nos separa de la competencia</h3>
+    <p>Estos elementos van más allá del enunciado y refuerzan el argumento de robustez y precio frente al jurado-cliente.</p>
+  </div>
+</div>
+
+<div class="section-card">
+<table>
+  <thead>
+    <tr><th>Extra</th><th>Descripción</th><th>Valor para el cliente</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>🏥 <strong>SisFall — ancianos reales</strong></td>
+      <td>15 sujetos de 60–75 años (SE01–SE15) con caídas y ADL. Único grupo con datos del segmento 65+ real.</td>
+      <td>El enunciado enfatiza el segmento senior. Nadie más tiene esto.</td>
+    </tr>
+    <tr>
+      <td>🛡️ <strong>Backend self-hosted EEE</strong></td>
+      <td>Hetzner Frankfurt. Datos de salud nunca salen de Europa. Sin SCC (Art. 46 RGPD).</td>
+      <td>Elimina riesgo legal. Competidores con AWS/GCP/Azure americano tienen problema RGPD.</td>
+    </tr>
+    <tr>
+      <td>🔄 <strong>OTA Model Updates</strong></td>
+      <td>MinIO + n8n workflow. Nuevos modelos al móvil sin pasar por Google Play Store.</td>
+      <td>Mejora del modelo en producción en horas, no semanas.</td>
+    </tr>
+    <tr>
+      <td>📏 <strong>Gate de altitud (Stage 2.5)</strong></td>
+      <td>AltitudeService: barómetro si existe, fallback integración accel. Discrimina caída real (Δh &lt; −0.3 m) de pisotón fuerte.</td>
+      <td>Menos falsas alarmas. Usuario no pierde confianza en el sistema.</td>
+    </tr>
+    <tr>
+      <td>🛑 <strong>Blanking still→motion</strong></td>
+      <td>Si el móvil lleva ≥0.5 s quieto, el primer movimiento brusco no activa alerta (coger el móvil de la mesa).</td>
+      <td>Elimina uno de los FP más comunes sin tocar el modelo.</td>
+    </tr>
+    <tr>
+      <td>📊 <strong>Suavizado temporal HAR</strong></td>
+      <td>Voto mayoritario de últimas 3 ventanas. Elimina parpadeo walking↔stairs en la UI.</td>
+      <td>UX más estable; VitaPoints no fluctúan cada 1.28 s.</td>
+    </tr>
+    <tr>
+      <td>⏱️ <strong>Debounce de alertas</strong></td>
+      <td>15 s de cooldown entre alertas de caída consecutivas.</td>
+      <td>Evita spam de notificaciones en eventos multi-ventana.</td>
+    </tr>
+    <tr>
+      <td>🎚️ <strong>3 modos operación por segmento</strong></td>
+      <td>Conservador (65+): recall ≥ 0.95. Equilibrado: F1 máximo. Estricto: precision ≥ 0.90.</td>
+      <td>Vitalia puede configurar el umbral según el riesgo actuarial del asegurado.</td>
+    </tr>
+    <tr>
+      <td>💰 <strong>Modelo de coste CapEx/OpEx</strong></td>
+      <td>CapEx ~34k€, OpEx ~512€/mes para 180k asegurados. ROI &gt;10.000% año 1.</td>
+      <td>Argumento de precio transparente, desglosado, y aplastante vs alternativas de terceros (&gt;5k€/mes).</td>
+    </tr>
+    <tr>
+      <td>📡 <strong>Monitoring en producción</strong></td>
+      <td>Prometheus + Grafana: drift del modelo, FPR en producción, latencia de alertas.</td>
+      <td>El sistema avisa cuando el modelo empeora antes de que lo haga el cliente.</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ════════════════════════════════════════════════════ -->
+<h2>5 · Estado de artefactos — qué falta</h2>
+
+<div class="section-card">
+<table>
+  <thead>
+    <tr>
+      <th>Artefacto</th>
+      <th>Responsable</th>
+      <th>Estado</th>
+      <th>Notas</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>har_model_int8.tflite</code> (5 clases)</td>
+      <td><span class="person-inigo">Íñigo</span></td>
+      <td><span class="badge wip">Sprint 2</span></td>
+      <td>I-1: reentrenar (sitting+standing→stationary); I-4: re-exportar TFLite</td>
+    </tr>
+    <tr>
+      <td><code>fall_model_int8.tflite</code></td>
+      <td><span class="person-jaime">Jaime</span></td>
+      <td><span class="badge done">Hecho</span></td>
+      <td>22 KB INT8, Recall 1.0, F1 0.98</td>
+    </tr>
+    <tr>
+      <td>App Flutter funcional</td>
+      <td><span class="person-jaime">Jaime</span></td>
+      <td><span class="badge wip">Parcial</span></td>
+      <td>B12: integración completa con modelo 5 clases pendiente de I-4</td>
+    </tr>
+    <tr>
+      <td>Demo en Android real (V5)</td>
+      <td><span class="person-both">Ambos</span></td>
+      <td><span class="badge todo">Pendiente</span></td>
+      <td>B13: requiere modelo integrado + dispositivo</td>
+    </tr>
+    <tr>
+      <td>Validación datos propios (Phyphox)</td>
+      <td><span class="person-both">Ambos</span></td>
+      <td><span class="badge todo">Pendiente</span></td>
+      <td>A9/A10 (Íñigo) + B13 (Jaime) — V5 del enunciado</td>
+    </tr>
+    <tr>
+      <td><code>notebooks/03_har_training.ipynb</code> (v2, 5 clases)</td>
+      <td><span class="person-inigo">Íñigo</span></td>
+      <td><span class="badge wip">Sprint 2</span></td>
+      <td>I-1/I-2/I-3: reentreno, separación stairs, contrato suavizado</td>
+    </tr>
+    <tr>
+      <td>Memoria técnica completa PDF</td>
+      <td><span class="person-both">Ambos</span></td>
+      <td><span class="badge wip">Parcial</span></td>
+      <td>Secciones 1-5 (Íñigo): A11-A15 · Secciones 6-11 (Jaime): ✅</td>
+    </tr>
+    <tr>
+      <td>Presentación slides jurado</td>
+      <td><span class="person-both">Ambos</span></td>
+      <td><span class="badge todo">Pendiente</span></td>
+      <td>Día 6-7 del cronograma</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ════════════════════════════════════════════════════ -->
+<h2>6 · Limitaciones conocidas (trabajo futuro)</h2>
+
+<div class="section-card">
+<table>
+  <thead>
+    <tr><th>Limitación</th><th>Impacto</th><th>Trabajo futuro</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>⚠️ <strong>Sin clase cycling</strong></td>
+      <td>El enunciado la menciona; no implementada en MVP. PAMAP2 no integrado.</td>
+      <td>Integrar PAMAP2 #231, resamplear 100→50 Hz, reentrenar HAR con 6ª clase</td>
+    </tr>
+    <tr>
+      <td>⚠️ <strong>Caídas solo con SisFall</strong></td>
+      <td>Dataset de cintura (body-worn), no smartphone bolsillo. Sin hard-negatives vigorosos (jogging, jumping).</td>
+      <td>Solicitar MobiAct v2 (form. HMU) para robustez de placement</td>
+    </tr>
+    <tr>
+      <td>⚠️ <strong>Sin validación datos propios</strong></td>
+      <td>V5 del enunciado pendiente</td>
+      <td>Phyphox → CSV → inferir TFLite → analizar errores</td>
+    </tr>
+    <tr>
+      <td>ℹ️ <strong>HAR v1: 6 clases</strong></td>
+      <td>sitting y standing aún separados. Sprint 2 en curso los fusiona en <em>stationary</em></td>
+      <td>Íñigo I-1/I-4: reentrenar y re-exportar a 5 clases</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p class="note" style="margin-top: 24px; text-align: center;">
+  Generado desde <code>docs/PLAN.md</code> · Caso 06 Vitalia Health Insurance · Equipo Íñigo + Jaime
+</p>
+
+</body>
+</html>
