@@ -40,6 +40,16 @@ class _ActivityScreenState extends State<ActivityScreen> {
   DateTime? _lastFallAlertTime;
   static const _fallCooldown = Duration(seconds: 15);
 
+  // Still→motion blanking: if the phone was resting and then suddenly moves
+  // (e.g. picked up off a table), the velocity spike can exceed the fall SVM
+  // threshold. Suppress fall alerts for 0.5 s after such a motion onset.
+  int _sampleCount = 0; // global sample counter
+  int _stillStreak = 0; // consecutive resting samples
+  int _fallBlankUntilSample = 0; // alerts suppressed up to this sample
+  static const double _stillBandG = 0.08; // |svm-1g| < this ⇒ resting
+  static const int _stillArmSamples = 25; // 0.5 s still to arm the blanking
+  static const int _blankSamples = 25; // 0.5 s grace after motion onset
+
   bool _modelsLoaded = false;
 
   @override
@@ -74,6 +84,20 @@ class _ActivityScreenState extends State<ActivityScreen> {
   void _onSample(SensorSample sample) {
     _altitudeService.addSample(sample);
 
+    // Track resting state and arm the still→motion blanking window.
+    _sampleCount++;
+    final restDev = (sample.svm - 1.0).abs();
+    if (restDev < _stillBandG) {
+      _stillStreak++;
+    } else {
+      // Motion sample. If we were resting ≥0.5 s, this is a still→motion onset
+      // (e.g. picking up the phone): open a grace window suppressing fall alerts.
+      if (_stillStreak >= _stillArmSamples) {
+        _fallBlankUntilSample = _sampleCount + _blankSamples;
+      }
+      _stillStreak = 0;
+    }
+
     // HAR window
     final harWindow = _harBuffer.addSample(sample);
     if (harWindow != null && _harClassifier.isLoaded) {
@@ -98,11 +122,14 @@ class _ActivityScreenState extends State<ActivityScreen> {
       );
       setState(() => _lastSvmPeak = fallResult.svmPeak);
 
-      // Debounce: suppress re-trigger within cooldown window (J-3).
+      // Suppress alert if within still→motion blanking window, then apply the
+      // J-3 debounce cooldown.
       if (fallResult.isFall && fallResult.triggeredStage >= 2) {
+        final blanked = _sampleCount <= _fallBlankUntilSample;
         final now = DateTime.now();
-        if (_lastFallAlertTime == null ||
-            now.difference(_lastFallAlertTime!) > _fallCooldown) {
+        if (!blanked &&
+            (_lastFallAlertTime == null ||
+                now.difference(_lastFallAlertTime!) > _fallCooldown)) {
           _lastFallAlertTime = now;
           unawaited(_triggerFallAlert(fallResult));
         }
@@ -212,12 +239,12 @@ class _ActivityScreenState extends State<ActivityScreen> {
 
   Widget _buildActivityCard() {
     final activityIcons = {
+      Activity.stationary: Icons.chair,
       Activity.walking: Icons.directions_walk,
+      Activity.running: Icons.directions_run,
+      Activity.cycling: Icons.pedal_bike,
       Activity.upstairs: Icons.stairs,
       Activity.downstairs: Icons.stairs_outlined,
-      Activity.sitting: Icons.chair,
-      Activity.standing: Icons.accessibility_new,
-      Activity.running: Icons.directions_run,
     };
     final icon = activityIcons[_currentActivity] ?? Icons.device_unknown;
     final name = _currentActivity?.displayName ?? 'Detecting…';

@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:math' show sin, pi;
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -9,6 +9,9 @@ import '../storage/database_service.dart';
 import '../services/api_service.dart';
 import '../services/model_update_service.dart';
 import '../services/ntfy_service.dart';
+import '../services/fall_background_service.dart';
+import '../services/notification_state.dart';
+import '../inference/har_test_samples.dart';
 import 'settings_screen.dart';
 
 class HomePage extends StatefulWidget {
@@ -18,8 +21,8 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
-  // ── Models & sensors ──────────────────────────────────────────────
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
+  // â”€â”€ Models & sensors â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   final _sensorService = SensorService();
   final _harBuffer = SlidingWindowBuffer(
       windowSize: 128, overlap: 0.5, rowMapper: (s) => s.toListLinear());
@@ -30,7 +33,7 @@ class _HomePageState extends State<HomePage> {
   StreamSubscription? _sensorSub;
   Timer? _pointsTimer;
 
-  // ── UI state ──────────────────────────────────────────────────────
+  // â”€â”€ UI state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   HarResult? _lastHar;
   FallResult? _lastFall;
   double _svmG = 0.0;
@@ -44,21 +47,25 @@ class _HomePageState extends State<HomePage> {
   SensorSample? _lastSample;
   int _tab = 0;
 
-  // ── Backend ───────────────────────────────────────────────────────
+  // â”€â”€ Backend â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   final _api = ApiService.instance;
   final _ntfy = NtfyService();
   StreamSubscription? _ntfySub;
   bool _backendConnected = false;
   String? _pendingFallId;
 
-  // ── Tests tab ────────────────────────────────────────────────────
+  // â”€â”€ Background service â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  StreamSubscription? _bgFallSub;
+  StreamSubscription? _notifTapSub;
+
+  // â”€â”€ Tests tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   final List<_TestResult> _testResults = [];
   bool _testRunning = false;
   bool _cancelRequested = false;
 
-  // ── Chart & DB ────────────────────────────────────────────────────
+  // â”€â”€ Chart & DB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   static const int _chartLen = 250; // 5 s @ 50 Hz
-  static const int _dbDecimate = 10; // store 1 of every 10 samples → 5 Hz
+  static const int _dbDecimate = 10; // store 1 of every 10 samples â†’ 5 Hz
   final List<double> _axBuf = [], _ayBuf = [], _azBuf = [];
   int _sampleCount = 0;
   int _dbReadingCount = 0;
@@ -67,7 +74,42 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _init();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+        // App going to background â€” hand off to background service.
+        _sensorSub?.cancel();
+        _sensorService.stop();
+        FallBackgroundService.start();
+        _bgFallSub = FallBackgroundService.fallEvents.listen((data) {
+          if (data == null) return;
+          final result = FallResult(
+            triggeredStage: (data['stage'] as num).toInt(),
+            svmPeak: (data['svmPeak'] as num).toDouble(),
+            cnnProbability: (data['cnnProbability'] as num).toDouble(),
+            immobilityConfirmed: data['immobilityConfirmed'] as bool? ?? false,
+          );
+          if (!_inFallAlert) _triggerFallAlert(result);
+        });
+        break;
+      case AppLifecycleState.resumed:
+        // App back to foreground â€” stop background service, resume sensors.
+        _bgFallSub?.cancel();
+        FallBackgroundService.stop();
+        if (mounted) {
+          _pointsTimer?.cancel();
+          _startSensors();
+        }
+        break;
+      default:
+        break;
+    }
   }
 
   Future<void> _init() async {
@@ -105,6 +147,25 @@ class _HomePageState extends State<HomePage> {
     });
     _startSensors();
     _subscribeNtfy();
+    _handleNotificationLaunch();
+  }
+
+  void _handleNotificationLaunch() {
+    // Cold-start: app was launched by tapping a fall notification.
+    if (initialFallPayload != null && !_inFallAlert) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_inFallAlert) {
+          _triggerFallAlert(initialFallPayload!.toFallResult());
+        }
+      });
+    }
+
+    // Hot-start: app was already running and user tapped notification.
+    _notifTapSub = fallNotificationStream.listen((payload) {
+      if (mounted && !_inFallAlert) {
+        _triggerFallAlert(payload.toFallResult());
+      }
+    });
   }
 
   void _subscribeNtfy() {
@@ -129,7 +190,7 @@ class _HomePageState extends State<HomePage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    msg.title.isNotEmpty ? msg.title : 'Alerta de caída',
+                    msg.title.isNotEmpty ? msg.title : 'Alerta de caÃ­da',
                     style: const TextStyle(
                         color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
                   ),
@@ -154,12 +215,12 @@ class _HomePageState extends State<HomePage> {
       final activity = _lastHar?.activity;
       if (activity != null && activity.isActive) {
         setState(() {
-          // Optimistic local increment — overwritten by backend response when online
+          // Optimistic local increment â€” overwritten by backend response when online
           _vitaPoints += activity.vitaPointsPerMin;
           _activeMinutes++;
           _activityMinutes[activity] = (_activityMinutes[activity] ?? 0) + 1;
         });
-        // Send activity event to backend — use response as source of truth
+        // Send activity event to backend â€” use response as source of truth
         _api.postActivity(
           activity: activity.name,
           durationSeconds: 60,
@@ -190,7 +251,7 @@ class _HomePageState extends State<HomePage> {
       _azBuf.removeAt(0);
     }
 
-    // SQLite — store every _dbDecimate-th sample
+    // SQLite â€” store every _dbDecimate-th sample
     if (_sampleCount % _dbDecimate == 0) {
       _db.insertReading(SensorReading(
         ts: DateTime.now().millisecondsSinceEpoch,
@@ -247,14 +308,14 @@ class _HomePageState extends State<HomePage> {
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFFC0392B),
-        title: const Text('¿Estás bien?',
+        title: const Text('Â¿EstÃ¡s bien?',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Se ha detectado una posible caída.',
+              'Se ha detectado una posible caÃ­da.',
               style: const TextStyle(color: Colors.white, fontSize: 15),
             ),
             const SizedBox(height: 8),
@@ -263,7 +324,7 @@ class _HomePageState extends State<HomePage> {
             _infoRow('Etapa', result.triggeredStage.toString()),
             const SizedBox(height: 12),
             const Text(
-              'Si no respondes en 30 s, se alertará a tu contacto de emergencia.',
+              'Si no respondes en 30 s, se alertarÃ¡ a tu contacto de emergencia.',
               style: TextStyle(color: Colors.white70, fontSize: 13),
             ),
           ],
@@ -288,7 +349,7 @@ class _HomePageState extends State<HomePage> {
             onPressed: () {
               Navigator.of(ctx).pop();
               setState(() => _inFallAlert = false);
-              // No ACK → backend worker will send ntfy+email alert
+              // No ACK â†’ backend worker will send ntfy+email alert
             },
             child: const Text('Llamar a emergencias'),
           ),
@@ -309,6 +370,7 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _sensorSub?.cancel();
     _sensorService.dispose();
     _harClassifier.dispose();
@@ -316,6 +378,8 @@ class _HomePageState extends State<HomePage> {
     _pointsTimer?.cancel();
     _ntfySub?.cancel();
     _ntfy.dispose();
+    _bgFallSub?.cancel();
+    _notifTapSub?.cancel();
     super.dispose();
   }
 
@@ -366,16 +430,16 @@ class _HomePageState extends State<HomePage> {
         unselectedItemColor: Colors.white38,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.directions_walk), label: 'Actividad'),
-          BottomNavigationBarItem(icon: Icon(Icons.analytics_outlined), label: 'Métricas'),
+          BottomNavigationBarItem(icon: Icon(Icons.analytics_outlined), label: 'MÃ©tricas'),
           BottomNavigationBarItem(icon: Icon(Icons.science_outlined), label: 'Pruebas'),
         ],
       ),
     );
   }
 
-  // ────────────────────────────────────────────────────────────────
-  // TAB 1 — ACTIVIDAD
-  // ────────────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // TAB 1 â€” ACTIVIDAD
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Widget _buildActivityTab() {
     return SingleChildScrollView(
@@ -399,12 +463,12 @@ class _HomePageState extends State<HomePage> {
   Widget _activityCard() {
     final activity = _lastHar?.activity;
     final icons = {
+      Activity.stationary: Icons.chair_outlined,
       Activity.walking: Icons.directions_walk,
+      Activity.running: Icons.directions_run,
+      Activity.cycling: Icons.pedal_bike,
       Activity.upstairs: Icons.north,
       Activity.downstairs: Icons.south,
-      Activity.sitting: Icons.chair_outlined,
-      Activity.standing: Icons.accessibility_new,
-      Activity.running: Icons.directions_run,
     };
 
     return _card(
@@ -418,8 +482,8 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(height: 10),
           Text(
             !_modelsLoaded
-                ? 'Cargando modelo…'
-                : (activity?.displayName ?? 'Detectando…'),
+                ? 'Cargando modeloâ€¦'
+                : (activity?.displayName ?? 'Detectandoâ€¦'),
             style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold),
           ),
           if (_lastHar != null) ...[
@@ -519,8 +583,8 @@ class _HomePageState extends State<HomePage> {
               children: [
                 Text(
                   _inFallAlert
-                      ? '¡Caída detectada!'
-                      : (stage1Active ? 'Impacto — analizando CNN…' : 'Monitor activo'),
+                      ? 'Â¡CaÃ­da detectada!'
+                      : (stage1Active ? 'Impacto â€” analizando CNNâ€¦' : 'Monitor activo'),
                   style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
                 ),
                 Text(
@@ -542,7 +606,7 @@ class _HomePageState extends State<HomePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Modo detección caídas',
+          Text('Modo detecciÃ³n caÃ­das',
               style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 12)),
           const SizedBox(height: 10),
           SegmentedButton<DetectionMode>(
@@ -554,7 +618,7 @@ class _HomePageState extends State<HomePage> {
             ),
             segments: const [
               ButtonSegment(value: DetectionMode.conservative, label: Text('65+', style: TextStyle(fontSize: 12))),
-              ButtonSegment(value: DetectionMode.balanced, label: Text('Estándar', style: TextStyle(fontSize: 12))),
+              ButtonSegment(value: DetectionMode.balanced, label: Text('EstÃ¡ndar', style: TextStyle(fontSize: 12))),
               ButtonSegment(value: DetectionMode.strict, label: Text('Estricto', style: TextStyle(fontSize: 12))),
             ],
             selected: {_fallDetector.mode},
@@ -580,10 +644,10 @@ class _HomePageState extends State<HomePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Header row ──────────────────────────────────────────
+          // â”€â”€ Header row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           Row(
             children: [
-              Text('Acelerómetro — últimos 5 s',
+              Text('AcelerÃ³metro â€” Ãºltimos 5 s',
                   style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.45),
                       fontSize: 11,
@@ -599,7 +663,7 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(height: 10),
 
-          // ── Line chart ──────────────────────────────────────────
+          // â”€â”€ Line chart â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           SizedBox(
             height: 120,
             child: hasData
@@ -646,27 +710,27 @@ class _HomePageState extends State<HomePage> {
                     duration: Duration.zero,
                   )
                 : const Center(
-                    child: Text('Esperando datos…',
+                    child: Text('Esperando datosâ€¦',
                         style: TextStyle(color: Colors.white24))),
           ),
           const SizedBox(height: 12),
 
-          // ── Numeric values ───────────────────────────────────────
+          // â”€â”€ Numeric values â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           Row(
             children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('ACELERÓMETRO (g)',
+                    Text('ACELERÃ“METRO (g)',
                         style: TextStyle(
                             color: Colors.greenAccent.withValues(alpha: 0.6),
                             fontSize: 10,
                             letterSpacing: 0.5)),
                     const SizedBox(height: 3),
-                    _sensorRow('X', s != null ? fmt(s.ax) : '—', Colors.redAccent),
-                    _sensorRow('Y', s != null ? fmt(s.ay) : '—', Colors.greenAccent),
-                    _sensorRow('Z', s != null ? fmt(s.az) : '—', Colors.lightBlueAccent),
+                    _sensorRow('X', s != null ? fmt(s.ax) : 'â€”', Colors.redAccent),
+                    _sensorRow('Y', s != null ? fmt(s.ay) : 'â€”', Colors.greenAccent),
+                    _sensorRow('Z', s != null ? fmt(s.az) : 'â€”', Colors.lightBlueAccent),
                   ],
                 ),
               ),
@@ -683,9 +747,9 @@ class _HomePageState extends State<HomePage> {
                               fontSize: 10,
                               letterSpacing: 0.5)),
                       const SizedBox(height: 3),
-                      _sensorRow('X', s != null ? fmt(s.gx) : '—', Colors.redAccent),
-                      _sensorRow('Y', s != null ? fmt(s.gy) : '—', Colors.greenAccent),
-                      _sensorRow('Z', s != null ? fmt(s.gz) : '—', Colors.lightBlueAccent),
+                      _sensorRow('X', s != null ? fmt(s.gx) : 'â€”', Colors.redAccent),
+                      _sensorRow('Y', s != null ? fmt(s.gy) : 'â€”', Colors.greenAccent),
+                      _sensorRow('Z', s != null ? fmt(s.gz) : 'â€”', Colors.lightBlueAccent),
                     ],
                   ),
                 ),
@@ -698,7 +762,7 @@ class _HomePageState extends State<HomePage> {
               Text('SVM: ',
                   style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.45), fontSize: 12)),
-              Text(s != null ? '${s.svmG.toStringAsFixed(3)} g' : '—',
+              Text(s != null ? '${s.svmG.toStringAsFixed(3)} g' : 'â€”',
                   style: const TextStyle(
                       color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
               const Spacer(),
@@ -747,9 +811,9 @@ class _HomePageState extends State<HomePage> {
         ),
       );
 
-  // ────────────────────────────────────────────────────────────────
-  // TAB 2 — MÉTRICAS
-  // ────────────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // TAB 2 â€” MÃ‰TRICAS
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Widget _buildMetricsTab() {
     return SingleChildScrollView(
@@ -757,19 +821,19 @@ class _HomePageState extends State<HomePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _sectionTitle('Modelo HAR — Reconocimiento de Actividad'),
+          _sectionTitle('Modelo HAR â€” Reconocimiento de Actividad'),
           _harModelCard(),
           const SizedBox(height: 14),
           _sectionTitle('VitaPoints por Actividad'),
           _vitaPointsBreakdownCard(),
           const SizedBox(height: 14),
-          _sectionTitle('Detector de Caídas — Cascada 3 Etapas'),
+          _sectionTitle('Detector de CaÃ­das â€” Cascada 3 Etapas'),
           _fallModelCard(),
           const SizedBox(height: 14),
-          _sectionTitle('Modos de Detección'),
+          _sectionTitle('Modos de DetecciÃ³n'),
           _modesExplanationCard(),
           const SizedBox(height: 14),
-          _sectionTitle('Sesión — Actividad desglosada'),
+          _sectionTitle('SesiÃ³n â€” Actividad desglosada'),
           _sessionBreakdownCard(),
           const SizedBox(height: 14),
           _sectionTitle('Estado en tiempo real'),
@@ -784,17 +848,17 @@ class _HomePageState extends State<HomePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _metricRow('Tipo', 'CNN 1D — 6 clases de actividad'),
-          _metricRow('Entrada', '128 muestras × 6 canales @50 Hz (2.56 s)'),
+          _metricRow('Tipo', 'CNN 1D â€” 6 clases de actividad'),
+          _metricRow('Entrada', '128 muestras Ã— 6 canales @50 Hz (2.56 s)'),
           _metricRow('Canales', 'ax, ay, az (g) + gx, gy, gz (rad/s)'),
           _metricRow('Baseline RF', 'Recall 0.931 | AUC 0.986 (LOSO)'),
-          _metricRow('Modelo', _harClassifier.isLoaded ? 'Cargado ✓' : 'No disponible'),
-          _metricRow('Tamaño', 'har_model_int8.tflite (<500 KB)'),
+          _metricRow('Modelo', _harClassifier.isLoaded ? 'Cargado âœ“' : 'No disponible'),
+          _metricRow('TamaÃ±o', 'har_model_int8.tflite (<500 KB)'),
           const SizedBox(height: 8),
           Text(
-            'El modelo CNN clasifica cada ventana de 2.56 s de señal bruta del '
-            'acelerómetro y giroscopio directamente, sin calcular features manuales. '
-            'La cuantización INT8 lo hace ejecutable en 20–30 ms en cualquier smartphone.',
+            'El modelo CNN clasifica cada ventana de 2.56 s de seÃ±al bruta del '
+            'acelerÃ³metro y giroscopio directamente, sin calcular features manuales. '
+            'La cuantizaciÃ³n INT8 lo hace ejecutable en 20â€“30 ms en cualquier smartphone.',
             style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 12, height: 1.5),
           ),
         ],
@@ -847,9 +911,9 @@ class _HomePageState extends State<HomePage> {
       _FallStageInfo(
         stage: '1',
         name: 'Umbral SVM (always-on)',
-        desc: 'Comprueba si el pico del vector de magnitud de aceleración supera '
+        desc: 'Comprueba si el pico del vector de magnitud de aceleraciÃ³n supera '
             '${FallDetector.svmThreshold.toStringAsFixed(1)} g. '
-            'Coste energético mínimo (<1 mW extra). Si se supera, activa la etapa 2.',
+            'Coste energÃ©tico mÃ­nimo (<1 mW extra). Si se supera, activa la etapa 2.',
         active: _svmG > FallDetector.svmThreshold,
         value: 'SVM: ${_svmG.toStringAsFixed(2)} g',
       ),
@@ -858,7 +922,7 @@ class _HomePageState extends State<HomePage> {
         name: 'CNN Confirmer (on-demand)',
         desc: 'Red CNN binaria sobre la ventana de 2 s centrada en el impacto. '
             'Solo se ejecuta si la etapa 1 se activa. '
-            'Threshold configurable según segmento (65+: 0.30, estándar: 0.50, estricto: 0.70).',
+            'Threshold configurable segÃºn segmento (65+: 0.30, estÃ¡ndar: 0.50, estricto: 0.70).',
         active: _lastFall != null && _lastFall!.cnnProbability > _fallDetector.threshold,
         value: _lastFall != null
             ? 'Prob: ${(_lastFall!.cnnProbability * 100).toStringAsFixed(1)}%'
@@ -866,10 +930,10 @@ class _HomePageState extends State<HomePage> {
       ),
       _FallStageInfo(
         stage: '3',
-        name: 'Inmovilidad post-caída',
+        name: 'Inmovilidad post-caÃ­da',
         desc: 'Si el usuario no se mueve en los 0.5 s posteriores al impacto '
-            '(varianza aceleración < 0.1 g²), se confirma la caída con alta certeza '
-            'y se muestra el prompt "¿Estás bien?".',
+            '(varianza aceleraciÃ³n < 0.1 gÂ²), se confirma la caÃ­da con alta certeza '
+            'y se muestra el prompt "Â¿EstÃ¡s bien?".',
         active: _lastFall?.immobilityConfirmed ?? false,
         value: _lastFall?.immobilityConfirmed == true ? 'Detectada' : 'No activa',
       ),
@@ -884,13 +948,13 @@ class _HomePageState extends State<HomePage> {
               _metricRow('Arquitectura', 'CNN 1D binario (fall / no-fall)'),
               _metricRow('Recall (modo conservador)', '~100%  (threshold 0.30)'),
               _metricRow('Recall (equilibrado)', '99.7%  (threshold 0.50)'),
-              _metricRow('Precisión (estricto)', '>90%  (threshold 0.70)'),
-              _metricRow('Tamaño', '${FallDetector.windowSize} muestras → 21.6 KB INT8'),
-              _metricRow('Modelo', _fallDetector.isLoaded ? 'Cargado ✓' : 'No disponible'),
+              _metricRow('PrecisiÃ³n (estricto)', '>90%  (threshold 0.70)'),
+              _metricRow('TamaÃ±o', '${FallDetector.windowSize} muestras â†’ 21.6 KB INT8'),
+              _metricRow('Modelo', _fallDetector.isLoaded ? 'Cargado âœ“' : 'No disponible'),
               const SizedBox(height: 8),
               Text(
-                'Por qué como sub-problema binario: las caídas son eventos transitorios con '
-                'señal muy diferente al resto. Entrenar un clasificador dedicado permite '
+                'Por quÃ© como sub-problema binario: las caÃ­das son eventos transitorios con '
+                'seÃ±al muy diferente al resto. Entrenar un clasificador dedicado permite '
                 'optimizar el recall de forma independiente y usar ventanas centradas en el '
                 'impacto en lugar de ventanas deslizantes.',
                 style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 12, height: 1.5),
@@ -961,8 +1025,8 @@ class _HomePageState extends State<HomePage> {
         threshold: '0.30',
         recall: '~100%',
         precision: '~50%',
-        desc: 'Prioriza no perderse ninguna caída. Acepta más falsas alarmas. '
-            'Para asegurados mayores de 65 años donde el FN (caída no detectada) '
+        desc: 'Prioriza no perderse ninguna caÃ­da. Acepta mÃ¡s falsas alarmas. '
+            'Para asegurados mayores de 65 aÃ±os donde el FN (caÃ­da no detectada) '
             'puede ser fatal.',
         color: Colors.orange,
       ),
@@ -972,8 +1036,8 @@ class _HomePageState extends State<HomePage> {
         threshold: '0.50',
         recall: '99.7%',
         precision: '98.7%',
-        desc: 'Maximiza el F1-score. Balance óptimo entre recall y precisión. '
-            'Recomendado para la mayoría de asegurados (45–64 años).',
+        desc: 'Maximiza el F1-score. Balance Ã³ptimo entre recall y precisiÃ³n. '
+            'Recomendado para la mayorÃ­a de asegurados (45â€“64 aÃ±os).',
         color: Colors.greenAccent,
       ),
       (
@@ -983,7 +1047,7 @@ class _HomePageState extends State<HomePage> {
         recall: '~90%',
         precision: '>95%',
         desc: 'Minimiza las falsas alarmas. Para usuarios activos donde los FP '
-            'generan desconfianza en el sistema y riesgo de desinstalación.',
+            'generan desconfianza en el sistema y riesgo de desinstalaciÃ³n.',
         color: Colors.lightBlueAccent,
       ),
     ];
@@ -1051,7 +1115,7 @@ class _HomePageState extends State<HomePage> {
   Widget _sessionBreakdownCard() {
     if (_activityMinutes.isEmpty) {
       return _card(
-        child: Text('Sin datos de sesión todavía.',
+        child: Text('Sin datos de sesiÃ³n todavÃ­a.',
             style: TextStyle(color: Colors.white.withOpacity(0.4))),
       );
     }
@@ -1093,25 +1157,25 @@ class _HomePageState extends State<HomePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _metricRow('Actividad', _lastHar?.activity.displayName ?? '—'),
+          _metricRow('Actividad', _lastHar?.activity.displayName ?? 'â€”'),
           _metricRow('Confianza HAR', _lastHar != null
               ? '${(_lastHar!.confidence * 100).toStringAsFixed(1)}%'
-              : '—'),
+              : 'â€”'),
           _metricRow('SVM actual', '${_svmG.toStringAsFixed(3)} g'),
-          _metricRow('CNN prob. caída', _lastFall != null
+          _metricRow('CNN prob. caÃ­da', _lastFall != null
               ? '${(_lastFall!.cnnProbability * 100).toStringAsFixed(1)}%'
-              : '—'),
+              : 'â€”'),
           _metricRow('Etapa fall', _lastFall?.triggeredStage.toString() ?? '0'),
-          _metricRow('Modelo HAR', _harClassifier.isLoaded ? '✓ loaded' : '✗ no disponible'),
-          _metricRow('Modelo fall', _fallDetector.isLoaded ? '✓ loaded' : '✗ no disponible'),
+          _metricRow('Modelo HAR', _harClassifier.isLoaded ? 'âœ“ loaded' : 'âœ— no disponible'),
+          _metricRow('Modelo fall', _fallDetector.isLoaded ? 'âœ“ loaded' : 'âœ— no disponible'),
         ],
       ),
     );
   }
 
-  // ────────────────────────────────────────────────────────────────
-  // TAB 3 — PRUEBAS
-  // ────────────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // TAB 3 â€” PRUEBAS
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Widget _buildTestsTab() {
     return SingleChildScrollView(
@@ -1119,7 +1183,7 @@ class _HomePageState extends State<HomePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _sectionTitle('Conexión al backend'),
+          _sectionTitle('ConexiÃ³n al backend'),
           _card(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1139,7 +1203,7 @@ class _HomePageState extends State<HomePage> {
                 ),
                 const SizedBox(height: 8),
                 _testButton(
-                  label: 'Enviar caída  POST /events/fall',
+                  label: 'Enviar caÃ­da  POST /events/fall',
                   icon: Icons.warning_amber_outlined,
                   color: Colors.orangeAccent,
                   onTap: _testPostFall,
@@ -1153,7 +1217,7 @@ class _HomePageState extends State<HomePage> {
                 ),
                 const SizedBox(height: 8),
                 _testButton(
-                  label: 'Último modelo  GET /models/latest',
+                  label: 'Ãšltimo modelo  GET /models/latest',
                   icon: Icons.system_update_outlined,
                   color: Colors.purpleAccent,
                   onTap: _testGetLatestModel,
@@ -1169,41 +1233,40 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           const SizedBox(height: 14),
-          _sectionTitle('Inferencia on-device'),
+          _sectionTitle('HAR â€” prueba por actividad (datos reales del dataset)'),
+          _card(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _testButton(label: 'EstÃ¡tico (sentado/parado)', icon: Icons.chair_outlined,      color: Colors.white54,       onTap: () => _testHar('static')),
+                const SizedBox(height: 8),
+                _testButton(label: 'Caminando',                 icon: Icons.directions_walk,     color: Colors.greenAccent,   onTap: () => _testHar('walking')),
+                const SizedBox(height: 8),
+                _testButton(label: 'Corriendo',                 icon: Icons.directions_run,      color: Colors.lightGreenAccent, onTap: () => _testHar('running')),
+                const SizedBox(height: 8),
+                _testButton(label: 'Ciclismo (PAMAP2)',         icon: Icons.pedal_bike,          color: Colors.cyanAccent,    onTap: () => _testHar('cycling')),
+                const SizedBox(height: 8),
+                _testButton(label: 'Subiendo escaleras',        icon: Icons.north,               color: Colors.amberAccent,   onTap: () => _testHar('upstairs')),
+                const SizedBox(height: 8),
+                _testButton(label: 'Bajando escaleras',         icon: Icons.south,               color: Colors.orangeAccent,  onTap: () => _testHar('downstairs')),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          _sectionTitle('Fall detector'),
           _card(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _testButton(
-                  label: 'HAR — datos de caminar',
-                  icon: Icons.directions_walk,
-                  color: Colors.greenAccent,
-                  onTap: () => _testHar('walking'),
-                ),
-                const SizedBox(height: 8),
-                _testButton(
-                  label: 'HAR — datos de correr',
-                  icon: Icons.directions_run,
-                  color: Colors.greenAccent,
-                  onTap: () => _testHar('running'),
-                ),
-                const SizedBox(height: 8),
-                _testButton(
-                  label: 'HAR — datos estático',
-                  icon: Icons.accessibility_new,
-                  color: Colors.white54,
-                  onTap: () => _testHar('static'),
-                ),
-                const SizedBox(height: 8),
-                _testButton(
-                  label: 'Fall detector — caída simulada (SVM 6g)',
+                  label: 'CaÃ­da simulada (SVM 6g)',
                   icon: Icons.personal_injury_outlined,
                   color: Colors.redAccent,
                   onTap: _testFallDetectorFall,
                 ),
                 const SizedBox(height: 8),
                 _testButton(
-                  label: 'Fall detector — ADL normal (sin caída)',
+                  label: 'ADL normal (sin caÃ­da)',
                   icon: Icons.shield_outlined,
                   color: Colors.tealAccent,
                   onTap: _testFallDetectorAdl,
@@ -1312,7 +1375,7 @@ class _HomePageState extends State<HomePage> {
       _addResult(_TestResult(
         name: 'GET /health',
         ok: ok,
-        detail: ok ? 'status: ok  db: ok  redis: ok  minio: ok' : 'Sin respuesta — backend no alcanzable',
+        detail: ok ? 'status: ok  db: ok  redis: ok  minio: ok' : 'Sin respuesta â€” backend no alcanzable',
         elapsed: '${sw.elapsedMilliseconds} ms',
       ));
     } catch (e) {
@@ -1338,7 +1401,7 @@ class _HomePageState extends State<HomePage> {
               'total_vitapoints:  ${res['total_vitapoints']}\n'
               'streak_days:       ${res['streak_days']}\n'
               'level:             ${res['level']}'
-            : 'Sin respuesta — backend no alcanzable',
+            : 'Sin respuesta â€” backend no alcanzable',
         elapsed: '${sw.elapsedMilliseconds} ms',
       ));
     } catch (e) {
@@ -1360,8 +1423,8 @@ class _HomePageState extends State<HomePage> {
         name: 'POST /events/fall  (stage=2, svm=5.4g)',
         ok: ok,
         detail: ok
-            ? 'fall_id: $fallId\nstatus: pending → worker esperará 30s ACK'
-            : 'Sin respuesta — backend no alcanzable',
+            ? 'fall_id: $fallId\nstatus: pending â†’ worker esperarÃ¡ 30s ACK'
+            : 'Sin respuesta â€” backend no alcanzable',
         elapsed: '${sw.elapsedMilliseconds} ms',
       ));
       if (ok) await _api.ackFall(fallId); // auto-ACK so worker doesn't alert
@@ -1374,52 +1437,42 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _testHar(String type) async {
     if (!_harClassifier.isLoaded) {
-      _addResult(_TestResult(name: 'HAR — $type', ok: false, detail: 'Modelo no cargado', elapsed: '0 ms'));
+      _addResult(_TestResult(name: 'HAR â€” $type', ok: false, detail: 'Modelo no cargado', elapsed: '0 ms'));
       return;
     }
     setState(() { _testRunning = true; _cancelRequested = false; });
     final sw = Stopwatch()..start();
     try {
-      final window = List.generate(128, (i) {
-        final t = i / 50.0;
-        switch (type) {
-          case 'walking':
-            return [
-              0.15 * sin(2 * pi * 1.8 * t),
-              0.20 * sin(2 * pi * 1.8 * t + 1.0),
-              1.0 + 0.10 * sin(2 * pi * 3.6 * t),
-              0.05 * sin(2 * pi * 1.8 * t),
-              0.08 * sin(2 * pi * 1.8 * t),
-              0.04 * sin(2 * pi * 1.8 * t),
-            ];
-          case 'running':
-            return [
-              0.40 * sin(2 * pi * 2.8 * t),
-              0.50 * sin(2 * pi * 2.8 * t + 1.0),
-              1.0 + 0.30 * sin(2 * pi * 5.6 * t),
-              0.20 * sin(2 * pi * 2.8 * t),
-              0.25 * sin(2 * pi * 2.8 * t),
-              0.15 * sin(2 * pi * 2.8 * t),
-            ];
-          default: // static
-            return [0.01, 0.01, 1.0, 0.0, 0.0, 0.0];
-        }
-      });
+      // Use real dataset windows (centroid of each class from UCI HAR / MotionSense / PAMAP2).
+      // These guarantee the expected classification on a correctly trained model.
+      final List<List<double>> window;
+      final Activity expectedClass;
+      switch (type) {
+        case 'static':    window = kHarStaticSample;    expectedClass = Activity.stationary; break;
+        case 'walking':   window = kHarWalkingSample;   expectedClass = Activity.walking;    break;
+        case 'running':   window = kHarRunningSample;   expectedClass = Activity.running;    break;
+        case 'cycling':   window = kHarCyclingSample;   expectedClass = Activity.cycling;    break;
+        case 'upstairs':  window = kHarUpstairsSample;  expectedClass = Activity.upstairs;   break;
+        case 'downstairs':window = kHarDownstairsSample;expectedClass = Activity.downstairs; break;
+        default:          window = kHarStaticSample;    expectedClass = Activity.stationary;
+      }
       final result = _harClassifier.classify(window);
       sw.stop();
       if (_cancelRequested) return;
+      final correct = result?.activity == expectedClass;
       _addResult(_TestResult(
-        name: 'HAR model — datos sintéticos ($type)',
-        ok: result != null,
+        name: 'HAR â€” $type (datos reales dataset)',
+        ok: result != null && correct,
         detail: result != null
-            ? 'Predicción: ${result.activity.displayName}\n'
+            ? 'Esperado:  ${expectedClass.displayName}\n'
+              'PredicciÃ³n: ${result.activity.displayName} ${correct ? "âœ“" : "âœ—"}\n'
               'Confianza:  ${(result.confidence * 100).toStringAsFixed(1)}%\n'
               'VitaPoints: ${result.vitaPointsPerMinute} pts/min'
-            : 'Clasificador devolvió null',
+            : 'Clasificador devolviÃ³ null',
         elapsed: '${sw.elapsedMilliseconds} ms',
       ));
     } catch (e) {
-      _addResult(_TestResult(name: 'HAR — $type', ok: false, detail: 'Error: $e', elapsed: '${sw.elapsedMilliseconds} ms'));
+      _addResult(_TestResult(name: 'HAR â€” $type', ok: false, detail: 'Error: $e', elapsed: '${sw.elapsedMilliseconds} ms'));
     } finally {
       if (mounted && !_cancelRequested) setState(() => _testRunning = false);
     }
@@ -1433,7 +1486,7 @@ class _HomePageState extends State<HomePage> {
       final window = List.generate(100, (i) {
         if (i >= 44 && i <= 56) {
           final phase = (i - 44) / 12.0; // 0..1
-          final peak = 6.0 * sin(phase * pi); // clean half-sine, 0→6→0
+          final peak = 6.0 * sin(phase * pi); // clean half-sine, 0â†’6â†’0
           return [peak, peak * 0.3, 1.0 + peak * 0.5, 0.5, 0.3, 0.2];
         }
         // Post-fall immobility (last 25 samples very still)
@@ -1444,7 +1497,7 @@ class _HomePageState extends State<HomePage> {
       sw.stop();
       if (_cancelRequested) return;
       _addResult(_TestResult(
-        name: 'Fall detector — caída simulada (pico 6g)',
+        name: 'Fall detector â€” caÃ­da simulada (pico 6g)',
         ok: result.isFall,
         detail: 'Etapa activada: ${result.triggeredStage}\n'
             'SVM peak:       ${result.svmPeak.toStringAsFixed(3)} g\n'
@@ -1456,10 +1509,10 @@ class _HomePageState extends State<HomePage> {
     } catch (e) {
       sw.stop();
       _addResult(_TestResult(
-        name: 'Fall detector — caída simulada (pico 6g)',
+        name: 'Fall detector â€” caÃ­da simulada (pico 6g)',
         ok: false,
-        detail: 'Excepción en inferencia CNN: $e\n'
-            'Stage 1 (SVM) puede haber pasado pero CNN lanzó error.',
+        detail: 'ExcepciÃ³n en inferencia CNN: $e\n'
+            'Stage 1 (SVM) puede haber pasado pero CNN lanzÃ³ error.',
         elapsed: '${sw.elapsedMilliseconds} ms',
       ));
     } finally {
@@ -1483,7 +1536,7 @@ class _HomePageState extends State<HomePage> {
               'this_week:   ${vp.thisWeek}\n'
               'streak_days: ${vp.streakDays}\n'
               'level:       ${vp.level}'
-            : 'Sin respuesta — backend no alcanzable',
+            : 'Sin respuesta â€” backend no alcanzable',
         elapsed: '${sw.elapsedMilliseconds} ms',
       ));
       if (ok && mounted) {
@@ -1535,7 +1588,7 @@ class _HomePageState extends State<HomePage> {
             style: TextStyle(color: Colors.white)),
         content: const Text(
           'Esto borra permanentemente los datos del usuario demo en el backend. '
-          'Útil para resetear entre demos.',
+          'Ãštil para resetear entre demos.',
           style: TextStyle(color: Colors.white70),
         ),
         actions: [
@@ -1562,8 +1615,8 @@ class _HomePageState extends State<HomePage> {
         name: 'DELETE /users/{id}/data',
         ok: ok,
         detail: ok
-            ? '204 No Content — todos los datos borrados en cascada'
-            : 'Sin respuesta — backend no alcanzable',
+            ? '204 No Content â€” todos los datos borrados en cascada'
+            : 'Sin respuesta â€” backend no alcanzable',
         elapsed: '${sw.elapsedMilliseconds} ms',
       ));
       if (ok && mounted) {
@@ -1593,22 +1646,22 @@ class _HomePageState extends State<HomePage> {
       sw.stop();
       if (_cancelRequested) return;
       _addResult(_TestResult(
-        name: 'Fall detector — caminar normal (sin caída)',
+        name: 'Fall detector â€” caminar normal (sin caÃ­da)',
         ok: !result.isFall,
         detail: 'Etapa activada: ${result.triggeredStage}\n'
             'SVM peak:       ${result.svmPeak.toStringAsFixed(3)} g\n'
             'CNN prob:       ${(result.cnnProbability * 100).toStringAsFixed(1)}%\n'
-            'Resultado:      ${result.isFall ? "CAÍDA (falso positivo!)" : "Sin caída ✓"}',
+            'Resultado:      ${result.isFall ? "CAÃDA (falso positivo!)" : "Sin caÃ­da âœ“"}',
         elapsed: '${sw.elapsedMilliseconds} ms',
       ));
     } catch (e) {
-      _addResult(_TestResult(name: 'Fall detector — ADL', ok: false, detail: 'Error: $e', elapsed: '${sw.elapsedMilliseconds} ms'));
+      _addResult(_TestResult(name: 'Fall detector â€” ADL', ok: false, detail: 'Error: $e', elapsed: '${sw.elapsedMilliseconds} ms'));
     } finally {
       if (mounted && !_cancelRequested) setState(() => _testRunning = false);
     }
   }
 
-  // ── Helpers ──────────────────────────────────────────────────────
+  // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Widget _card({required Widget child, Color? color}) => Container(
         width: double.infinity,
@@ -1692,4 +1745,5 @@ class _TestResult {
       required this.detail,
       required this.elapsed});
 }
+
 
