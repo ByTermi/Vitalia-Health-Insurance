@@ -24,8 +24,8 @@ enum DetectionMode { conservative, balanced, strict }
 // compensate the marginal FP increase while recall improves.
 const _thresholds = {
   DetectionMode.conservative: 0.55, // 65+ segment: maximise recall
-  DetectionMode.balanced: 0.65,     // was 0.70
-  DetectionMode.strict: 0.80,       // was 0.85
+  DetectionMode.balanced: 0.70,
+  DetectionMode.strict: 0.85,
 };
 
 class FallDetector {
