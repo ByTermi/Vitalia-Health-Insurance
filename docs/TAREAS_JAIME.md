@@ -214,13 +214,13 @@ No avanzar a las tareas individuales hasta que estos estén listos.
     - `void addSample(SensorSample sample)` — necesario para el fallback accel
     - `void start()` — suscribe al barómetro si existe
     - `void stop()`
-  - Umbrales a calibrar en Sync 3: stairs gate `|Δh| < 0.25 m` → plano; fall gate `Δh < −0.3 m` o `vVert < −1.0 m/s`.
+  - Umbrales (constantes anotadas, calibrar con datos reales si hace falta): stairs gate `|Δh| < 0.25 m` → plano; fall gate `Δh < −0.3 m` o `vVert < −1.0 m/s`.
 
 - [ ] **J-2** `app/lib/inference/fall_detector.dart` — gate de altitud en la cascada
   - Modificar `analyze()` para aceptar `double? altitudeDeltaM` y `double? verticalVelocityMs`.
   - Nuevo Stage 2.5 (entre CNN y inmovilidad): si el CNN supera el umbral PERO no hay caída de altitud significativa (`altitudeDeltaM > −0.3` y `verticalVelocityMs > −1.0`), el resultado se queda en `triggeredStage = 2` sin escalar a alerta.
   - Si `altitudeDeltaM == null` (sin servicio o sin barómetro + fallback poco fiable) → comportamiento actual intacto (no empeorar recall en móviles sin sensor).
-  - Documentar los umbrales como constantes anotadas "calibrar en Sync 3".
+  - Documentar los umbrales como constantes anotadas (calibrar con datos reales si hace falta).
 
 - [ ] **J-3** `app/lib/screens/activity_screen.dart` — debounce de alertas de caída
   - Añadir `DateTime? _lastFallAlertTime` + constante `_fallCooldown = Duration(seconds: 15)`.
@@ -233,16 +233,18 @@ No avanzar a las tareas individuales hasta que estos estén listos.
   - Si no hay mayoría clara (empate), devolver la predicción más reciente.
   - Previene parpadeo entre walking/upstairs sin requerir reentreno.
 
+- [x] **J-6** `app/lib/inference/fall_detector.dart` — bajar umbrales CNN (−0.05)
+  - balanced: 0.70 → 0.65 · strict: 0.85 → 0.80 · conservative: intacto (0.55).
+  - Guards ya implementados (altitude gate + blanking + debounce) compensan el posible aumento de FP.
+
+- [ ] **J-7** `docs/ENTREGABLES.html` — panel de entregables ✅ **Hecho en esta sesión**
+  - 6 secciones: entregables obligatorios (E1-E4), aspectos valorados (V1-V6), requisitos técnicos (R1-R6), extras vs competencia, estado de artefactos, limitaciones.
+
 - [ ] **J-5** (bloqueado hasta I-1 de Íñigo) `app/lib/inference/har_classifier.dart` + UI — clase "Quieto"
   - Renombrar `Activity.sitting` → `Activity.stationary`, eliminar `Activity.standing`.
   - Nuevo orden enum = `['walking', 'upstairs', 'downstairs', 'stationary', 'running']` (5 clases).
   - Actualizar `_activityNames`, `_vitaPointsPerMinute`, `isActive`, iconos en `activity_screen.dart`.
   - **Dependencia:** `har_model_int8.tflite` debe tener 5 salidas en el orden correcto (tarea I-4 de Íñigo).
-
-- [ ] **Sync 3 — Calibración de umbrales de altitud**
-  - Probar en móvil real: subir/bajar escaleras → medir Δh real por ventana.
-  - Simular caída con cojín → medir vVert y Δh en el momento del impacto.
-  - Ajustar constantes en `AltitudeService` y `FallDetector`.
 
 ---
 

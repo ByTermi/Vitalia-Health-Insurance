@@ -9,7 +9,7 @@
 
 ### 6.1 Por qué un sub-problema binario independiente
 
-La detección de caídas no puede tratarse como una clase más en el clasificador HAR multiclase (6 clases: walking, running, cycling, stairs_up, stairs_down, static) por tres razones:
+La detección de caídas no puede tratarse como una clase más en el clasificador HAR multiclase (5 clases: walking, upstairs, downstairs, stationary, running) por tres razones:
 
 **1. Desbalanceo extremo.**
 En cualquier dataset de vida real, las caídas son eventos raros. En SisFall: 3.984 ventanas de caída frente a 49.608 de ADL (ratio 1:12,5). Un softmax de 7 clases colapsa la clase minoritaria sin técnicas específicas; un modelo binario dedicado puede aplicar class_weight y SMOTE sin interferir con el resto de clases.
@@ -20,7 +20,9 @@ Para el sub-problema HAR, un error de clasificación entre "walking" y "stairs_u
 **3. Ventaneo diferente.**
 Las actividades usan ventana deslizante de 128 muestras (2,56 s, 50 % solapamiento). Las caídas son eventos transitorios: se usa una ventana de 100 muestras (2 s) **centrada en el pico de impacto**, lo que maximiza la información discriminativa del momento de la caída. No es posible usar la misma estrategia de ventaneo para ambos sub-problemas.
 
-### 6.2 Datos — SisFall
+### 6.2 Datos — SisFall (dataset principal de caídas)
+
+Se prioriza SisFall por incluir **15 sujetos ancianos reales (60–75 años)**, el segmento crítico 65+ del enunciado. MobiAct v2 (66 sujetos, smartphone bolsillo) queda como ampliación futura para robustez de colocación (actualmente no adquirido — requiere solicitud formal al grupo BMI de HMU).
 
 | Parámetro | Valor |
 |-----------|-------|
@@ -403,4 +405,17 @@ Break-even:      < 1 semana de operación tras lanzamiento
 | Apple Watch Fall Detection | ❌ | ✅ | ✅ | Parcial | ❌ (Apple infra) | ❌ |
 | Google Fit | ✅ | ❌ | Parcial | Parcial | ❌ | ❌ |
 
-**Ventaja diferencial única:** el único sistema que combina HAR de 6 clases + detección de caídas con cascada 3 etapas + privacidad by-design + self-hosted EEE + integración directa con modelo actuarial de primas (VitaPoints).
+**Ventaja diferencial única:** el único sistema que combina HAR on-device + detección de caídas con cascada 3 etapas + privacidad by-design + self-hosted EEE + integración directa con modelo actuarial de primas (VitaPoints).
+
+---
+
+## §11 · Limitaciones conocidas del MVP y trabajo futuro
+
+| Limitación | Impacto en MVP | Trabajo futuro |
+|------------|----------------|----------------|
+| **Sin clase cycling** | Enunciado la menciona; no entrenada en v1 (PAMAP2 no integrado) | Integrar PAMAP2 #231, resamplear 100→50 Hz, reentrenar HAR |
+| **Caídas solo con SisFall** | Dataset de cintura (sensor body-worn), no smartphone bolsillo | Solicitar MobiAct v2 (BMI-HMU); añadir ADLs vigorosos (jogging, jumping) como hard-negatives |
+| **Sin validación con datos propios** | V5 del enunciado pendiente | Grabar con Phyphox (~5 min/actividad), inferir con `har_model_int8.tflite`, analizar errores |
+| **Modelo HAR v1: 6 clases** | sitting y standing aún separados; Sprint 2 en curso los fusiona en *stationary* | Íñigo I-1: reentrenar a 5 clases; Íñigo I-4: re-exportar TFLite |
+
+> Presentar estas limitaciones proactivamente al jurado refuerza la credibilidad técnica y demuestra capacidad crítica — parte del argumento de robustez.
