@@ -3,40 +3,40 @@ import 'dart:math';
 import 'package:tflite_flutter/tflite_flutter.dart';
 
 // Order MUST match the training class order (notebook 03):
-// [walking, upstairs, downstairs, sitting, standing, running].
+// [static, walking, running, cycling, upstairs, downstairs]
+// sitting + standing are merged into static (index 0).
 // The model outputs an index into this list; reordering breaks the mapping.
 enum Activity {
-  walking,
-  upstairs,
-  downstairs,
-  sitting,
-  standing,
-  running,
+  stationary, // index 0 — merged sitting + standing (0 VitaPoints)
+  walking,    // index 1
+  running,    // index 2
+  cycling,    // index 3
+  upstairs,   // index 4
+  downstairs, // index 5
 }
 
 const _activityNames = {
+  Activity.stationary: 'Static',
   Activity.walking: 'Walking',
+  Activity.running: 'Running',
+  Activity.cycling: 'Cycling',
   Activity.upstairs: 'Upstairs',
   Activity.downstairs: 'Downstairs',
-  Activity.sitting: 'Sitting',
-  Activity.standing: 'Standing',
-  Activity.running: 'Running',
 };
 
 const _vitaPointsPerMinute = {
+  Activity.stationary: 0,
   Activity.walking: 2,
+  Activity.running: 5,
+  Activity.cycling: 4,
   Activity.upstairs: 3,
   Activity.downstairs: 2,
-  Activity.sitting: 0,
-  Activity.standing: 0,
-  Activity.running: 5,
 };
 
 extension ActivityInfo on Activity {
   String get displayName => _activityNames[this] ?? 'Unknown';
   int get vitaPointsPerMin => _vitaPointsPerMinute[this] ?? 0;
-  // sitting/standing are the model's stationary classes (0 VitaPoints).
-  bool get isActive => this != Activity.sitting && this != Activity.standing;
+  bool get isActive => this != Activity.stationary;
 }
 
 class HarResult {
@@ -135,10 +135,8 @@ class HarClassifier {
 
     final int maxIdx;
     if (meanSvm < _staticSvmThreshold) {
-      // Phone is stationary — restrict to sitting (3) or standing (4)
-      final si = Activity.sitting.index;
-      final sti = Activity.standing.index;
-      maxIdx = probs[si] >= probs[sti] ? si : sti;
+      // Phone is stationary — clamp to static (index 0)
+      maxIdx = Activity.stationary.index;
     } else {
       maxIdx = probs.indexOf(probs.reduce((a, b) => a > b ? a : b));
     }
