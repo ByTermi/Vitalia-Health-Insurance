@@ -4,6 +4,7 @@ import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../sensors/sensor_service.dart';
 import '../inference/fall_detector.dart';
+import '../storage/database_service.dart';
 
 const _bgChannelId = 'vitalia_bg';
 const _fallChannelId = 'fall_alert';
@@ -56,6 +57,20 @@ Future<void> _onStart(ServiceInstance service) async {
   final sensorService = SensorService();
   final fallDetector = FallDetector(mode: DetectionMode.balanced);
   final fallBuffer = SlidingWindowBuffer(windowSize: 100, overlap: 0.5);
+
+  // Honour user-tuned thresholds (SQLite) — the SVM gate governs stage-1 in background too.
+  try {
+    final db = DatabaseService.instance;
+    await db.init();
+    final s = await db.getAllSettings();
+    for (final m in DetectionMode.values) {
+      fallDetector.setCnnThreshold(m, s['cnn_${m.name}'] ?? defaultThresholds[m]!);
+    }
+    fallDetector.svmThreshold =
+        s['svm_threshold'] ?? FallDetector.defaultSvmThreshold;
+  } catch (_) {
+    // DB unavailable in isolate → keep defaults.
+  }
 
   await fallDetector.load();
   sensorService.start();

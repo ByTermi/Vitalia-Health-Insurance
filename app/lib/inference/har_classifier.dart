@@ -2,24 +2,23 @@ import 'dart:io';
 import 'dart:math';
 import 'package:tflite_flutter/tflite_flutter.dart';
 
-// Order MUST match the training class order (notebook 03):
-// [static, walking, running, cycling, upstairs, downstairs]
-// sitting + standing are merged into static (index 0).
+// Order MUST match the training class order (notebook har-pamap-kaggle-inigo, 5 classes):
+// [static, walking, running, upstairs, downstairs]
+// sitting + standing are merged into static (index 0). Cycling was removed: PAMAP2
+// ankle placement did not transfer to phone and the model hallucinated it over walking.
 // The model outputs an index into this list; reordering breaks the mapping.
 enum Activity {
   stationary, // index 0 — merged sitting + standing (0 VitaPoints)
   walking,    // index 1
   running,    // index 2
-  cycling,    // index 3
-  upstairs,   // index 4
-  downstairs, // index 5
+  upstairs,   // index 3
+  downstairs, // index 4
 }
 
 const _activityNames = {
   Activity.stationary: 'Static',
   Activity.walking: 'Walking',
   Activity.running: 'Running',
-  Activity.cycling: 'Cycling',
   Activity.upstairs: 'Upstairs',
   Activity.downstairs: 'Downstairs',
 };
@@ -28,7 +27,6 @@ const _vitaPointsPerMinute = {
   Activity.stationary: 0,
   Activity.walking: 2,
   Activity.running: 5,
-  Activity.cycling: 4,
   Activity.upstairs: 3,
   Activity.downstairs: 2,
 };
@@ -62,6 +60,33 @@ class HarClassifier {
   // Upstairs/walking/running always exceed 0.1 g mean; truly still → <0.03 g.
   static const double _staticSvmThreshold = 0.05;
 
+  // Stairs altitude gate (J/Sync-3): the inertial model confuses flat walking with stairs
+  // in pocket placement (LOSO: walking→downstairs ~29%, walking→upstairs ~11%).
+  //
+  // Barometer is noisy: on the test phone flat walking swings Δh ∈ [-1, +1] m (mean ~0),
+  // while descending stairs holds Δh ~ -1.4 m. Instantaneous |Δh| is too jittery to gate on.
+  // We average Δh over the last few windows: flat walking averages to ~0 (the ± swings cancel),
+  // real stairs hold a sustained signed trend. Altitude is AUTHORITATIVE for stairs — a sustained
+  // trend FORCES up/downstairs (the inertial model alone rarely predicts them); a flat trend
+  // demotes any stairs prediction to walking.
+  static const int defaultAltTrendWindows = 2;     // ~2.5 s — small for fast response
+  static const double defaultStairsUpM = 0.7;      // |mean Δh| (m) to confirm a flight of stairs
+
+  int altTrendWindows = defaultAltTrendWindows;
+  double stairsConfirmUpM = defaultStairsUpM;       // trend ≥ this → upstairs
+  double stairsConfirmDownM = -defaultStairsUpM;    // trend ≤ this → downstairs
+
+  // Set both up/down thresholds from a single positive magnitude (slider-friendly).
+  void setStairsThresholdMagnitude(double m) {
+    stairsConfirmUpM = m;
+    stairsConfirmDownM = -m;
+  }
+
+  final List<double> _recentAltDeltas = [];
+  double _altTrend = 0.0;
+  // Smoothed altitude trend (m) over the last altTrendWindows windows — exposed for debug UI.
+  double get altitudeTrend => _altTrend;
+
   // Temporal smoothing: majority vote over the last N windows (see Sync 2 for N choice).
   // N=3 means ~3.84 s before a class change is accepted; prevents walking↔stairs flicker.
   static const int _smoothingN = 3;
@@ -89,7 +114,10 @@ class HarClassifier {
 
   bool get isLoaded => _loaded;
 
-  HarResult? classify(List<List<double>> window) {
+  // [altitudeDeltaM]: net altitude change (m) over the window, from AltitudeService.
+  // When provided, enables the stairs gate (flat altitude → reclassify stairs as walking).
+  // Pass null to disable the gate (e.g. offline test samples with no sensor context).
+  HarResult? classify(List<List<double>> window, {double? altitudeDeltaM}) {
     if (!_loaded || _interpreter == null) return null;
     if (window.length != windowSize || window[0].length != channels) return null;
 
@@ -140,8 +168,27 @@ class HarClassifier {
     } else {
       maxIdx = probs.indexOf(probs.reduce((a, b) => a > b ? a : b));
     }
-    final rawActivity = Activity.values[maxIdx];
+    var rawActivity = Activity.values[maxIdx];
     final rawConfidence = probs[maxIdx];
+
+    // Stairs altitude gate — altitude is authoritative for stairs (the inertial model rarely
+    // predicts them in pocket placement). A sustained altitude trend FORCES up/downstairs; a
+    // flat trend demotes any stairs prediction to walking. The static-SVM clamp keeps priority
+    // (skip the gate when the phone is stationary so "still" never turns into stairs).
+    if (altitudeDeltaM != null && meanSvm >= _staticSvmThreshold) {
+      _recentAltDeltas.add(altitudeDeltaM);
+      if (_recentAltDeltas.length > altTrendWindows) _recentAltDeltas.removeAt(0);
+      _altTrend = _recentAltDeltas.reduce((a, b) => a + b) / _recentAltDeltas.length;
+
+      if (_altTrend <= stairsConfirmDownM) {
+        rawActivity = Activity.downstairs; // sustained descent
+      } else if (_altTrend >= stairsConfirmUpM) {
+        rawActivity = Activity.upstairs; // sustained climb
+      } else if (rawActivity == Activity.upstairs ||
+          rawActivity == Activity.downstairs) {
+        rawActivity = Activity.walking; // flat ground → model's stairs guess was wrong
+      }
+    }
 
     // Temporal smoothing: majority vote over last _smoothingN predictions.
     _recentActivities.add(rawActivity);
