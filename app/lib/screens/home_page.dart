@@ -3,6 +3,7 @@ import 'dart:math' show sin, pi;
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../sensors/sensor_service.dart';
+import '../sensors/altitude_service.dart';
 import '../inference/har_classifier.dart';
 import '../inference/fall_detector.dart';
 import '../storage/database_service.dart';
@@ -29,6 +30,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   final _fallBuffer = SlidingWindowBuffer(windowSize: 100, overlap: 0.5);
   final _harClassifier = HarClassifier();
   final _fallDetector = FallDetector(mode: DetectionMode.balanced);
+  final _altitudeService = AltitudeService();
 
   StreamSubscription? _sensorSub;
   Timer? _pointsTimer;
@@ -86,6 +88,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         // App going to background â€” hand off to background service.
         _sensorSub?.cancel();
         _sensorService.stop();
+        _altitudeService.stop();
         FallBackgroundService.start();
         _bgFallSub = FallBackgroundService.fallEvents.listen((data) {
           if (data == null) return;
@@ -114,6 +117,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   Future<void> _init() async {
     await _db.init();
+    await _applySavedThresholds();
     final lastProfile = await _db.getLastUsedProfile();
     if (lastProfile != null) {
       _api.ip = lastProfile.ip;
@@ -148,6 +152,19 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     _startSensors();
     _subscribeNtfy();
     _handleNotificationLaunch();
+  }
+
+  // Load user-tuned thresholds from SQLite; fall back to defaults when a key is absent.
+  Future<void> _applySavedThresholds() async {
+    final s = await _db.getAllSettings();
+    for (final m in DetectionMode.values) {
+      _fallDetector.setCnnThreshold(
+          m, s['cnn_${m.name}'] ?? defaultThresholds[m]!);
+    }
+    _fallDetector.svmThreshold =
+        s['svm_threshold'] ?? FallDetector.defaultSvmThreshold;
+    _harClassifier.setStairsThresholdMagnitude(
+        s['stairs_alt'] ?? HarClassifier.defaultStairsUpM);
   }
 
   void _handleNotificationLaunch() {
@@ -209,6 +226,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   void _startSensors() {
     _sensorService.start();
+    _altitudeService.start();
     _sensorSub = _sensorService.sampleStream.listen(_onSample);
 
     _pointsTimer = Timer.periodic(const Duration(minutes: 1), (_) {
@@ -266,10 +284,15 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     }
 
     setState(() => _lastSample = sample);
+    // Feed altitude service (barometer + accel fallback) for the stairs gate.
+    _altitudeService.addSample(sample);
     // HAR inference
     final harWindow = _harBuffer.addSample(sample);
     if (harWindow != null && _harClassifier.isLoaded) {
-      final result = _harClassifier.classify(harWindow);
+      final result = _harClassifier.classify(
+        harWindow,
+        altitudeDeltaM: _altitudeService.altitudeDeltaOverLastSamples(128),
+      );
       if (result != null) setState(() => _lastHar = result);
     }
 
@@ -373,6 +396,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _sensorSub?.cancel();
     _sensorService.dispose();
+    _altitudeService.stop();
     _harClassifier.dispose();
     _fallDetector.dispose();
     _pointsTimer?.cancel();
@@ -466,7 +490,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       Activity.stationary: Icons.chair_outlined,
       Activity.walking: Icons.directions_walk,
       Activity.running: Icons.directions_run,
-      Activity.cycling: Icons.pedal_bike,
       Activity.upstairs: Icons.north,
       Activity.downstairs: Icons.south,
     };
@@ -502,6 +525,18 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                   fontSize: 13),
             ),
           ],
+          const SizedBox(height: 8),
+          // Debug del gate de escaleras: sensor de altitud, Δh instantáneo y trend (media).
+          // El gate decide con 'trend' (down si <-0.7, up si >+0.7).
+          Text(
+            'alt: ${_altitudeService.hasBarometer ? "barometer" : "accel fallback"}  '
+            'Δh: ${_altitudeService.altitudeDeltaOverLastSamples(128).toStringAsFixed(2)}  '
+            'trend: ${_harClassifier.altitudeTrend.toStringAsFixed(2)} m',
+            style: TextStyle(
+                color: Colors.white.withOpacity(0.5),
+                fontSize: 11,
+                fontFamily: 'monospace'),
+          ),
         ],
       ),
     );
@@ -560,43 +595,50 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
 
   Widget _fallStatusCard() {
-    final stage1Active = _svmG > FallDetector.svmThreshold;
+    final stage1Active = _svmG > _fallDetector.svmThreshold;
     final color = _inFallAlert
         ? Colors.red.shade700
         : (stage1Active ? Colors.orange.shade800 : const Color(0xFF1A2D4A));
 
-    return _card(
-      color: color,
-      child: Row(
-        children: [
-          Icon(
-            _inFallAlert
-                ? Icons.warning_amber_rounded
-                : (stage1Active ? Icons.sensors : Icons.shield_outlined),
-            color: _inFallAlert ? Colors.amber : (stage1Active ? Colors.orange : Colors.greenAccent),
-            size: 36,
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _inFallAlert
-                      ? '¡Caída detectada!'
-                      : (stage1Active ? 'Impacto â€” analizando CNNâ€¦' : 'Monitor activo'),
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
-                ),
-                Text(
-                  'SVM: ${_svmG.toStringAsFixed(2)} g  |  '
-                  'Umbral: ${FallDetector.svmThreshold.toStringAsFixed(1)} g  |  '
-                  'Modo: ${_fallDetector.mode.name}',
-                  style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 12),
-                ),
-              ],
+    // Fixed height so the block does not jump when the title text or mode changes.
+    return SizedBox(
+      height: 86,
+      child: _card(
+        color: color,
+        child: Row(
+          children: [
+            Icon(
+              _inFallAlert
+                  ? Icons.warning_amber_rounded
+                  : (stage1Active ? Icons.sensors : Icons.shield_outlined),
+              color: _inFallAlert ? Colors.amber : (stage1Active ? Colors.orange : Colors.greenAccent),
+              size: 36,
             ),
-          ),
-        ],
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _inFallAlert
+                        ? '¡Caída detectada!'
+                        : (stage1Active ? 'Impacto — analizando CNN…' : 'Monitor activo'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                  Text(
+                    'Modo: ${_fallDetector.mode.name}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -624,8 +666,73 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             selected: {_fallDetector.mode},
             onSelectionChanged: (s) => setState(() => _fallDetector.mode = s.first),
           ),
+          const SizedBox(height: 12),
+          _thresholdSlider(
+            label: 'Umbral CNN (${_fallDetector.mode.name})',
+            value: _fallDetector.threshold,
+            min: 0.30,
+            max: 0.95,
+            suffix: _fallDetector.threshold.toStringAsFixed(2),
+            onChanged: (v) {
+              setState(() => _fallDetector.setCnnThreshold(_fallDetector.mode, v));
+              _db.setSetting('cnn_${_fallDetector.mode.name}', v);
+            },
+          ),
+          _thresholdSlider(
+            label: 'Impacto SVM',
+            value: _fallDetector.svmThreshold,
+            min: 2.0,
+            max: 5.0,
+            suffix: '${_fallDetector.svmThreshold.toStringAsFixed(1)} g',
+            onChanged: (v) {
+              setState(() => _fallDetector.svmThreshold = v);
+              _db.setSetting('svm_threshold', v);
+            },
+          ),
+          _thresholdSlider(
+            label: 'Umbral escaleras (altitud)',
+            value: _harClassifier.stairsConfirmUpM,
+            min: 0.30,
+            max: 2.0,
+            suffix: '${_harClassifier.stairsConfirmUpM.toStringAsFixed(2)} m',
+            onChanged: (v) {
+              setState(() => _harClassifier.setStairsThresholdMagnitude(v));
+              _db.setSetting('stairs_alt', v);
+            },
+          ),
         ],
       ),
+    );
+  }
+
+  Widget _thresholdSlider({
+    required String label,
+    required double value,
+    required double min,
+    required double max,
+    required String suffix,
+    required ValueChanged<double> onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label,
+                style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12)),
+            Text(suffix,
+                style: const TextStyle(color: Colors.greenAccent, fontSize: 12)),
+          ],
+        ),
+        Slider(
+          value: value.clamp(min, max),
+          min: min,
+          max: max,
+          activeColor: Colors.greenAccent,
+          onChanged: onChanged,
+        ),
+      ],
     );
   }
 
@@ -912,9 +1019,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         stage: '1',
         name: 'Umbral SVM (always-on)',
         desc: 'Comprueba si el pico del vector de magnitud de aceleración supera '
-            '${FallDetector.svmThreshold.toStringAsFixed(1)} g. '
+            '${_fallDetector.svmThreshold.toStringAsFixed(1)} g. '
             'Coste energético mínimo (<1 mW extra). Si se supera, activa la etapa 2.',
-        active: _svmG > FallDetector.svmThreshold,
+        active: _svmG > _fallDetector.svmThreshold,
         value: 'SVM: ${_svmG.toStringAsFixed(2)} g',
       ),
       _FallStageInfo(
@@ -1244,8 +1351,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 const SizedBox(height: 8),
                 _testButton(label: 'Corriendo',                 icon: Icons.directions_run,      color: Colors.lightGreenAccent, onTap: () => _testHar('running')),
                 const SizedBox(height: 8),
-                _testButton(label: 'Ciclismo (PAMAP2)',         icon: Icons.pedal_bike,          color: Colors.cyanAccent,    onTap: () => _testHar('cycling')),
-                const SizedBox(height: 8),
                 _testButton(label: 'Subiendo escaleras',        icon: Icons.north,               color: Colors.amberAccent,   onTap: () => _testHar('upstairs')),
                 const SizedBox(height: 8),
                 _testButton(label: 'Bajando escaleras',         icon: Icons.south,               color: Colors.orangeAccent,  onTap: () => _testHar('downstairs')),
@@ -1451,7 +1556,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         case 'static':    window = kHarStaticSample;    expectedClass = Activity.stationary; break;
         case 'walking':   window = kHarWalkingSample;   expectedClass = Activity.walking;    break;
         case 'running':   window = kHarRunningSample;   expectedClass = Activity.running;    break;
-        case 'cycling':   window = kHarCyclingSample;   expectedClass = Activity.cycling;    break;
         case 'upstairs':  window = kHarUpstairsSample;  expectedClass = Activity.upstairs;   break;
         case 'downstairs':window = kHarDownstairsSample;expectedClass = Activity.downstairs; break;
         default:          window = kHarStaticSample;    expectedClass = Activity.stationary;
@@ -1503,7 +1607,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             'SVM peak:       ${result.svmPeak.toStringAsFixed(3)} g\n'
             'CNN prob:       ${(result.cnnProbability * 100).toStringAsFixed(1)}%\n'
             'Inmovilidad:    ${result.immobilityConfirmed}\n'
-            'Umbral SVM:     ${FallDetector.svmThreshold} g',
+            'Umbral SVM:     ${_fallDetector.svmThreshold.toStringAsFixed(1)} g',
         elapsed: '${sw.elapsedMilliseconds} ms',
       ));
     } catch (e) {
