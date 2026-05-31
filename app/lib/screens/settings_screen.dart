@@ -5,7 +5,7 @@ import '../storage/database_service.dart';
 const _kBg = Color(0xFFEFF2F6);
 const _kSurface = Color(0xFFFFFFFF);
 const _kInk = Color(0xFF1F2533);
-const _kAccent = Color(0xFF03045E);
+const _kAccent = Color(0xFF1558D6);
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
