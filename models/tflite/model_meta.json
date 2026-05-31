@@ -1,0 +1,32 @@
+{
+  "class_names": [
+    "static",
+    "walking",
+    "running",
+    "upstairs",
+    "downstairs"
+  ],
+  "n_classes": 5,
+  "window_size": 128,
+  "overlap": 0.5,
+  "target_hz": 50,
+  "channels": [
+    "lax",
+    "lay",
+    "laz",
+    "gx",
+    "gy",
+    "gz"
+  ],
+  "cycling_trained": false,
+  "loso_f1_macro": 0.7837,
+  "loso_n_subjects": 5,
+  "training_windows": 29894,
+  "vitapoints_per_min": {
+    "static": 0,
+    "walking": 2,
+    "running": 5,
+    "upstairs": 3,
+    "downstairs": 2
+  }
+}
