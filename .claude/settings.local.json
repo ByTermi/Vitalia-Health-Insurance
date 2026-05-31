@@ -17,5 +17,8 @@
       "PowerShell($ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest -Uri \"https://win.rustup.rs/x86_64\" -OutFile \"$env:TEMP\\\\rustup-init.exe\"; Write-Host \"Ejecutando instalador...\"; & \"$env:TEMP\\\\rustup-init.exe\" -y)",
       "Bash(docker compose *)"
     ]
-  }
+  },
+  "disabledMcpjsonServers": [
+    "n8n-mcp"
+  ]
 }

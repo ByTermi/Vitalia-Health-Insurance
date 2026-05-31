@@ -19,8 +19,8 @@ import 'settings_screen.dart';
 const kBg = Color(0xFFEFF2F6);       // fondo scaffold / insets
 const kSurface = Color(0xFFFFFFFF);  // tarjetas, appbar, navbar
 const kInk = Color(0xFF1F2533);      // texto/iconos primarios
-const kAccent = Color(0xFF03045E);   // acento principal (azul marino)
-const kAccentBg = Color(0xFFECEDF8); // tinte suave del acento
+const kAccent = Color(0xFF1558D6);   // acento principal (marino claro)
+const kAccentBg = Color(0xFFEBF2FF); // tinte suave del acento
 const kDangerBg = Color(0xFFFDECEC); // tinte suave de peligro
 
 class HomePage extends StatefulWidget {
@@ -1440,11 +1440,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }) =>
       ElevatedButton.icon(
         style: ElevatedButton.styleFrom(
-          backgroundColor: color.withOpacity(0.13),
-          foregroundColor: color,
-          disabledForegroundColor: color.withOpacity(0.45),
-          disabledBackgroundColor: color.withOpacity(0.07),
-          side: BorderSide(color: color.withOpacity(0.50)),
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          disabledForegroundColor: Colors.white,
+          disabledBackgroundColor: Colors.grey.shade400,
+          elevation: 0,
           alignment: Alignment.centerLeft,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         ),
