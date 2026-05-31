@@ -38,8 +38,13 @@ __pycache__/
 graphify-out/
 
 # Datasets — raw downloads and archives (too large, download separately)
+data/raw/
 data/compressed/
 
 # Preprocessed numpy arrays (derived from raw, regenerable via notebooks)
 data/processed/*.npy
 # Note: EDA figures (*.png) in data/processed/ ARE committed (small, for memoria)
+
+# Kaggle upload staging folders (contain heavy .npy and binary dataset files)
+scripts/vitalia-har-processed-upload/
+scripts/pamap2-upload/
