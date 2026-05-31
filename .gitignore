@@ -38,8 +38,12 @@ __pycache__/
 graphify-out/
 
 # Datasets — raw downloads and archives (too large, download separately)
-data/raw/
 data/compressed/
+# Large raw datasets (download separately or use Git LFS per dataset)
+data/raw/SisFall_dataset/
+data/raw/pamap2+physical+activity+monitoring/
+data/raw/pamap2+physical+activity+monitoring.zip
+data/raw/human+activity+recognition+using+smartphones/UCI HAR Dataset.zip
 
 # Preprocessed numpy arrays (derived from raw, regenerable via notebooks)
 data/processed/*.npy
