@@ -118,9 +118,9 @@
     <tr>
       <td><strong>E1</strong></td>
       <td>Modelo funcional: ventana accel+gyro → clasifica actividad + detecta caídas</td>
-      <td>1D-ResNet HAR (5 clases) + CNN fall detector binario</td>
-      <td><code>har_model_int8.tflite</code> · <code>fall_model_int8.tflite</code></td>
-      <td><span class="badge wip">En curso</span></td>
+      <td>1D-CNN HAR (6 clases: stationary, walking, running, cycling, upstairs, downstairs) + CNN fall detector binario</td>
+      <td><code>har_model_int8.tflite</code> (106 KB) · <code>fall_model_int8.tflite</code> (22 KB)</td>
+      <td><span class="badge done">Hecho</span></td>
     </tr>
     <tr>
       <td><strong>E2</strong></td>
@@ -139,7 +139,7 @@
     <tr>
       <td><strong>E4</strong></td>
       <td>Arquitectura producción teórica + estimación de coste construir y mantener</td>
-      <td>FastAPI + PostgreSQL + Redis + MinIO + MLflow + Prometheus, self-hosted EEE. CapEx ~34k€ + OpEx ~512€/mes</td>
+      <td>FastAPI + PostgreSQL + Redis + MinIO + MLflow + Prometheus, self-hosted EEE (Hetzner Frankfurt). CapEx ~84k€ + OpEx ~512€/mes</td>
       <td><code>docs/arquitectura_produccion.md</code> · §5 y §10 memoria</td>
       <td><span class="badge done">Hecho</span></td>
     </tr>
@@ -256,7 +256,7 @@
     <tr>
       <td><strong>R5</strong></td>
       <td>Datasets públicos de accel/gyro (no datos propios Vitalia)</td>
-      <td>UCI HAR #240 · MotionSense · SisFall. Todos públicos, libres, documentados</td>
+      <td>UCI HAR #240 · MotionSense · PAMAP2 (cycling) · SisFall. Todos públicos, libres, documentados. Evaluados también: UT Complex, variante no-cycling</td>
       <td><span class="badge done">Hecho</span></td>
     </tr>
     <tr>
@@ -328,7 +328,7 @@
     </tr>
     <tr>
       <td>💰 <strong>Modelo de coste CapEx/OpEx</strong></td>
-      <td>CapEx ~34k€, OpEx ~512€/mes para 180k asegurados. ROI &gt;10.000% año 1.</td>
+      <td>CapEx ~84k€, OpEx ~512€/mes para 180k asegurados. ROI &gt;10.000% año 1.</td>
       <td>Argumento de precio transparente, desglosado, y aplastante vs alternativas de terceros (&gt;5k€/mes).</td>
     </tr>
     <tr>
@@ -355,10 +355,10 @@
   </thead>
   <tbody>
     <tr>
-      <td><code>har_model_int8.tflite</code> (5 clases)</td>
+      <td><code>har_model_int8.tflite</code> (6 clases: stationary+cycling)</td>
       <td><span class="person-inigo">Íñigo</span></td>
-      <td><span class="badge wip">Sprint 2</span></td>
-      <td>I-1: reentrenar (sitting+standing→stationary); I-4: re-exportar TFLite</td>
+      <td><span class="badge done">Hecho</span></td>
+      <td>106 KB INT8, acc 96.9%, latencia 0.09 ms. Cycling vía PAMAP2.</td>
     </tr>
     <tr>
       <td><code>fall_model_int8.tflite</code></td>
@@ -369,8 +369,8 @@
     <tr>
       <td>App Flutter funcional</td>
       <td><span class="person-jaime">Jaime</span></td>
-      <td><span class="badge wip">Parcial</span></td>
-      <td>B12: integración completa con modelo 5 clases pendiente de I-4</td>
+      <td><span class="badge done">Hecho</span></td>
+      <td>6 clases integradas, botones de test, fall detection en segundo plano, gate altitud, debounce.</td>
     </tr>
     <tr>
       <td>Demo en Android real (V5)</td>
@@ -385,10 +385,10 @@
       <td>A9/A10 (Íñigo) + B13 (Jaime) — V5 del enunciado</td>
     </tr>
     <tr>
-      <td><code>notebooks/03_har_training.ipynb</code> (v2, 5 clases)</td>
+      <td><code>notebooks/03_har_training.ipynb</code> + variantes</td>
       <td><span class="person-inigo">Íñigo</span></td>
-      <td><span class="badge wip">Sprint 2</span></td>
-      <td>I-1/I-2/I-3: reentreno, separación stairs, contrato suavizado</td>
+      <td><span class="badge done">Hecho</span></td>
+      <td>Varios notebooks: UCI HAR, PAMAP2, UT Complex, variante no-cycling. Modelo 6 clases entrenado y exportado.</td>
     </tr>
     <tr>
       <td>Memoria técnica completa PDF</td>
@@ -416,9 +416,9 @@
   </thead>
   <tbody>
     <tr>
-      <td>⚠️ <strong>Sin clase cycling</strong></td>
-      <td>El enunciado la menciona; no implementada en MVP. PAMAP2 no integrado.</td>
-      <td>Integrar PAMAP2 #231, resamplear 100→50 Hz, reentrenar HAR con 6ª clase</td>
+      <td>ℹ️ <strong>Sin validación MobiAct v2</strong></td>
+      <td>Caídas solo con SisFall (cintura). Sin datos de smartphone en bolsillo para caídas.</td>
+      <td>Solicitar MobiAct v2 (form. HMU); añadir ADLs vigorosos como hard-negatives</td>
     </tr>
     <tr>
       <td>⚠️ <strong>Caídas solo con SisFall</strong></td>
@@ -431,9 +431,9 @@
       <td>Phyphox → CSV → inferir TFLite → analizar errores</td>
     </tr>
     <tr>
-      <td>ℹ️ <strong>HAR v1: 6 clases</strong></td>
-      <td>sitting y standing aún separados. Sprint 2 en curso los fusiona en <em>stationary</em></td>
-      <td>Íñigo I-1/I-4: reentrenar y re-exportar a 5 clases</td>
+      <td>ℹ️ <strong>Sin validación con datos propios</strong></td>
+      <td>V5 del enunciado: grabación con Phyphox pendiente de completar análisis de errores</td>
+      <td>Phyphox → CSV → inferir TFLite → documentar casos de confusión walking↔stairs</td>
     </tr>
   </tbody>
 </table>

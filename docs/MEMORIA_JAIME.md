@@ -9,7 +9,7 @@
 
 ### 6.1 Por qué un sub-problema binario independiente
 
-La detección de caídas no puede tratarse como una clase más en el clasificador HAR multiclase (5 clases: walking, upstairs, downstairs, stationary, running) por tres razones:
+La detección de caídas no puede tratarse como una clase más en el clasificador HAR multiclase (6 clases: stationary, walking, running, cycling, upstairs, downstairs) por tres razones:
 
 **1. Desbalanceo extremo.**
 En cualquier dataset de vida real, las caídas son eventos raros. En SisFall: 3.984 ventanas de caída frente a 49.608 de ADL (ratio 1:12,5). Un softmax de 7 clases colapsa la clase minoritaria sin técnicas específicas; un modelo binario dedicado puede aplicar class_weight y SMOTE sin interferir con el resto de clases.
@@ -399,7 +399,7 @@ Break-even:      < 1 semana de operación tras lanzamiento
 
 | Producto | HAR | Caídas | On-device | RGPD | Self-hosted | Prima dinámica |
 |----------|-----|--------|-----------|------|-------------|----------------|
-| **Vitalia (esta propuesta)** | ✅ 6 clases | ✅ cascada 3 etapas | ✅ TFLite INT8 | ✅ by design | ✅ EEE | ✅ VitaPoints |
+| **Vitalia (esta propuesta)** | ✅ **6 clases incl. cycling** | ✅ cascada 3 etapas | ✅ TFLite INT8 | ✅ by design | ✅ EEE | ✅ VitaPoints |
 | Vitality (Discovery/Prudential) | ✅ pasos | ❌ | ❌ cloud | Parcial | ❌ | ✅ |
 | Generali Vitality | ✅ pasos | ❌ | ❌ cloud | Parcial | ❌ | ✅ |
 | Apple Watch Fall Detection | ❌ | ✅ | ✅ | Parcial | ❌ (Apple infra) | ❌ |
@@ -413,9 +413,7 @@ Break-even:      < 1 semana de operación tras lanzamiento
 
 | Limitación | Impacto en MVP | Trabajo futuro |
 |------------|----------------|----------------|
-| **Sin clase cycling** | Enunciado la menciona; no entrenada en v1 (PAMAP2 no integrado) | Integrar PAMAP2 #231, resamplear 100→50 Hz, reentrenar HAR |
-| **Caídas solo con SisFall** | Dataset de cintura (sensor body-worn), no smartphone bolsillo | Solicitar MobiAct v2 (BMI-HMU); añadir ADLs vigorosos (jogging, jumping) como hard-negatives |
-| **Sin validación con datos propios** | V5 del enunciado pendiente | Grabar con Phyphox (~5 min/actividad), inferir con `har_model_int8.tflite`, analizar errores |
-| **Modelo HAR v1: 6 clases** | sitting y standing aún separados; Sprint 2 en curso los fusiona en *stationary* | Íñigo I-1: reentrenar a 5 clases; Íñigo I-4: re-exportar TFLite |
+| **Caídas solo con SisFall** | Dataset de cintura (sensor body-worn), no smartphone en bolsillo | Solicitar MobiAct v2 (BMI-HMU); añadir ADLs vigorosos (jogging, jumping) como hard-negatives |
+| **Sin validación con datos propios completa** | V5 del enunciado en proceso | Grabar con Phyphox (~5 min/actividad), inferir con `har_model_int8.tflite`, documentar confusiones |
 
 > Presentar estas limitaciones proactivamente al jurado refuerza la credibilidad técnica y demuestra capacidad crítica — parte del argumento de robustez.

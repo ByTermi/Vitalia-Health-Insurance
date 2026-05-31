@@ -149,9 +149,9 @@ No avanzar a las tareas individuales hasta que estos estén listos.
 
 ---
 
-## Sprint 2 — Mejoras v2: HAR 5 clases + Gate de Altitud
+## Sprint 2 — Mejoras completadas ✅
 
-> **Contexto:** el HAR actual (6 clases) confunde walking con upstairs/downstairs y trata sitting+standing como clases separadas aunque valen lo mismo. Mejoras: reentrenar a 5 clases fusionando sitting+standing → stationary; añadir gate de altitud en app para corregir la confusión stairs.
+> **Contexto actualizado (main):** el modelo actual ya tiene 6 clases: stationary (sitting+standing fusionados), walking, running, **cycling** (PAMAP2 integrado), upstairs, downstairs. El gate de altitud y el suavizado temporal ya están en la app. Las tareas I-1 a I-5 descritas abajo corresponden a un sprint planificado que fue superado por la integración de cycling. Mantener para referencia histórica.
 
 ### Sincronización con Jaime antes de empezar
 
@@ -198,14 +198,9 @@ No avanzar a las tareas individuales hasta que estos estén listos.
   - Documentar: qué actividades falla el modelo, diferencia bolsillo vs mano, casos de confusión walking↔stairs.
   - (Equivale a A9+A10 ya en el sprint original — marcar como misma tarea.)
 
-- [ ] **I-7** Sincronizar docs con clases reales
-  - Verificar que ninguna sección de la memoria dice "6 clases incl. cycling" sin aclarar que cycling = trabajo futuro.
-  - Revisar §§1-5 de la memoria una vez terminados: asegurarse de que el set de clases objetivo es `[walking, upstairs, downstairs, stationary, running]` (5 clases, Sprint 2).
+- [x] **I-7** Sincronizar docs con clases reales — **HECHO** (docs actualizados a 6 clases incl. cycling)
 
-- [ ] **I-8** (opcional, si sobra tiempo) Integrar PAMAP2 para clase cycling
-  - Descargar PAMAP2 #231 → `data/raw/PAMAP2/`, resamplear 100→50 Hz.
-  - Añadir clase `cycling` al notebook de training (6ª clase), reentrenar, re-exportar TFLite.
-  - Solo si I-1 a I-5 están cerrados y hay tiempo antes del Día 6.
+- [x] **I-8** Integrar PAMAP2 para clase cycling — **HECHO** (PAMAP2 #231, resampleo 100→50 Hz, cycling índice 3 en modelo actual)
 
 ---
 
