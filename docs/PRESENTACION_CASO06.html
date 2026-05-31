@@ -9,9 +9,8 @@
 html,body{height:100%;overflow:hidden;user-select:none}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:#0d1117;color:#e6edf3;line-height:1.5}
 .deck{width:100vw;height:100vh;position:relative;overflow:hidden}
-.slide{position:absolute;inset:0;display:flex;flex-direction:column;padding:36px 60px 48px;opacity:0;pointer-events:none;transform:translateX(60px);transition:opacity .32s ease,transform .32s ease}
-.slide.active{opacity:1;pointer-events:all;transform:translateX(0)}
-.slide.prev{transform:translateX(-60px)}
+.slide{position:absolute;inset:0;display:flex;flex-direction:column;padding:26px 56px 40px;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .22s ease,visibility .22s ease;overflow:hidden}
+.slide.active{opacity:1;visibility:visible;pointer-events:all}
 .progress-bar{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,#58a6ff,#3fb950);transition:width .3s ease;z-index:100}
 .nav{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:14px;z-index:100}
 .nav-btn{background:#161b22;border:1px solid #30363d;color:#8b949e;padding:7px 18px;border-radius:6px;cursor:pointer;font-size:0.82rem;transition:background .2s,color .2s;font-family:inherit}
@@ -19,12 +18,12 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0d1117;color:#e6edf
 .nav-btn:disabled{opacity:.35;cursor:default}
 .nav-counter{color:#8b949e;font-size:0.82rem;min-width:58px;text-align:center}
 .slide-tag{font-size:0.7rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#58a6ff;margin-bottom:5px}
-.slide-title{font-size:1.85rem;font-weight:700;color:#e6edf3;margin-bottom:5px;line-height:1.2}
+.slide-title{font-size:1.6rem;font-weight:700;color:#e6edf3;margin-bottom:4px;line-height:1.2}
 .slide-title span{color:#58a6ff}
-.slide-sub{color:#8b949e;font-size:0.88rem;margin-bottom:20px}
+.slide-sub{color:#8b949e;font-size:0.85rem;margin-bottom:14px}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:18px;flex:1;min-height:0}
 .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;flex:1;min-height:0}
-.card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:7px}
+.card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:6px}
 .card.blue{border-color:#1f6feb}.card.green{border-color:#238636}.card.amber{border-color:#9e6a03}.card.red{border-color:#da3633}.card.purple{border-color:#6e40c9}
 .c-icon{font-size:1.5rem}.c-title{font-size:0.9rem;font-weight:700;color:#c9d1d9}
 .card.blue .c-title{color:#58a6ff}.card.green .c-title{color:#3fb950}.card.amber .c-title{color:#d29922}.card.red .c-title{color:#f85149}.card.purple .c-title{color:#a371f7}
@@ -32,8 +31,8 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0d1117;color:#e6edf
 .c-stat{font-size:2.4rem;font-weight:900;line-height:1;color:#58a6ff}
 .m-label{font-size:0.7rem;color:#8b949e;text-transform:uppercase;letter-spacing:.06em;margin-top:3px}
 table{width:100%;border-collapse:collapse;font-size:0.79rem}
-th{background:#0d1117;color:#8b949e;font-weight:600;text-align:left;padding:7px 11px;border-bottom:1px solid #30363d;font-size:0.7rem;text-transform:uppercase;letter-spacing:.06em}
-td{padding:7px 11px;border-bottom:1px solid #21262d;vertical-align:top;color:#c9d1d9}
+th{background:#0d1117;color:#8b949e;font-weight:600;text-align:left;padding:5px 11px;border-bottom:1px solid #30363d;font-size:0.68rem;text-transform:uppercase;letter-spacing:.06em}
+td{padding:5px 11px;border-bottom:1px solid #21262d;vertical-align:top;color:#c9d1d9}
 tr:last-child td{border-bottom:none}
 tbody tr:hover{background:#161b22}
 .tbl-wrap{overflow:hidden;border-radius:8px;border:1px solid #30363d}
@@ -45,7 +44,7 @@ tbody tr:hover{background:#161b22}
 ul.il{list-style:none;display:flex;flex-direction:column;gap:5px}
 ul.il li{font-size:0.8rem;color:#c9d1d9;display:flex;gap:7px;align-items:flex-start}
 ul.il li::before{content:"▸";color:#58a6ff;flex-shrink:0}
-.cs{background:#161b22;border:1px solid #30363d;border-radius:7px;padding:10px 14px;display:flex;align-items:center;gap:11px;margin-bottom:8px}
+.cs{background:#161b22;border:1px solid #30363d;border-radius:7px;padding:8px 12px;display:flex;align-items:center;gap:11px;margin-bottom:6px}
 .cs:last-child{margin-bottom:0}
 .cn{background:#58a6ff;color:#0d1117;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:700;flex-shrink:0}
 .ct{flex:1;font-size:0.79rem}
@@ -78,7 +77,7 @@ ul.il li::before{content:"▸";color:#58a6ff;flex-shrink:0}
       <span class="badge bb">IA en el móvil</span>
       <span class="badge bg">Detección de caídas 65+</span>
       <span class="badge bg">Datos seguros en Europa</span>
-      <span class="badge ba">84k€ coste de construcción</span>
+      <span class="badge ba">50k€ coste de construcción</span>
       <span class="badge ba">512€/mes operación</span>
     </div>
     <div style="font-size:0.85rem;color:#8b949e">
@@ -126,7 +125,7 @@ ul.il li::before{content:"▸";color:#58a6ff;flex-shrink:0}
     <div style="display:flex;flex-direction:column;gap:9px">
       <div class="cs" style="border-color:#1f6feb"><div class="cn">📱</div><div class="ct"><strong>Sensores del smartphone</strong><span class="cn-note">Detecta movimiento continuamente · Sin consumo notable de batería</span></div></div>
       <div style="text-align:center;color:#58a6ff;font-size:1.1rem">↓</div>
-      <div class="cs" style="border-color:#1f6feb"><div class="cn">🧠</div><div class="ct"><strong>Modelo de IA — On-device</strong><span class="cn-note">Clasifica la actividad cada 2.5 segundos · Tamaño: 106 KB · Instantáneo</span></div></div>
+      <div class="cs" style="border-color:#1f6feb"><div class="cn">🧠</div><div class="ct"><strong>Modelo de IA — On-device</strong><span class="cn-note">Clasifica la actividad cada 2.56 segundos · Tamaño: 106 KB · Instantáneo</span></div></div>
       <div style="text-align:center;color:#58a6ff;font-size:1.1rem">↓ simultáneamente</div>
       <div class="cs" style="border-color:#238636"><div class="cn">⚠️</div><div class="ct"><strong>Detector de caídas</strong><span class="cn-note">Siempre activo · Reacciona al instante · Especialmente diseñado para mayores de 65</span></div></div>
       <div style="text-align:center;color:#58a6ff;font-size:1.1rem">↓ solo el resultado</div>
@@ -203,7 +202,7 @@ ul.il li::before{content:"▸";color:#58a6ff;flex-shrink:0}
     <div class="card blue">
       <div class="c-icon">📊</div>
       <div class="c-title">Análisis continuo</div>
-      <div class="c-body">El sistema examina el movimiento en bloques de 2.5 segundos. Clasifica la actividad en tiempo real, de forma silenciosa y sin interrumpir al usuario.</div>
+      <div class="c-body">El sistema examina el movimiento en bloques de 2.56 segundos. Clasifica la actividad en tiempo real, de forma silenciosa y sin interrumpir al usuario.</div>
     </div>
     <div class="card amber">
       <div class="c-icon">🔄</div>
@@ -213,7 +212,7 @@ ul.il li::before{content:"▸";color:#58a6ff;flex-shrink:0}
     <div class="card green">
       <div class="c-icon">⚡</div>
       <div class="c-title">Reacción instantánea ante caídas</div>
-      <div class="c-body">El detector de caídas no espera. Monitoriza el impacto en tiempo real y actúa de inmediato — no cada 2.5 segundos como el clasificador de actividad.</div>
+      <div class="c-body">El detector de caídas no espera. Monitoriza el impacto en tiempo real y actúa de inmediato — no cada 2.56 segundos como el clasificador de actividad.</div>
     </div>
   </div>
   <div class="g2" style="flex:0">
@@ -247,7 +246,7 @@ ul.il li::before{content:"▸";color:#58a6ff;flex-shrink:0}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="flow-box" style="border-color:#1f6feb">
           <div style="font-size:0.72rem;color:#58a6ff;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Entrada</div>
-          <div style="font-size:0.82rem;color:#c9d1d9">2.5 segundos<br>de movimiento</div>
+          <div style="font-size:0.82rem;color:#c9d1d9">2.56 segundos<br>de movimiento</div>
         </div>
         <div class="flow-arrow" style="display:flex;align-items:center;justify-content:center;font-size:1.8rem">→</div>
       </div>
@@ -472,13 +471,8 @@ ul.il li::before{content:"▸";color:#58a6ff;flex-shrink:0}
             <tr><td>Base de datos</td><td>Historial de actividad, puntos acumulados, consentimientos</td></tr>
             <tr><td>Sistema de alertas</td><td>Envía notificación push al contacto de emergencia</td></tr>
             <tr><td>Repositorio de modelos</td><td>Guarda y distribuye las versiones del modelo de IA</td></tr>
-            <tr><td>Panel de monitorización</td><td>Detecta si el modelo empeora en producción y hace rollback</td></tr>
           </tbody>
         </table>
-      </div>
-      <div class="card amber" style="margin-top:10px;padding:10px">
-        <div style="font-size:0.76rem;color:#d29922;font-weight:700">🔍 Monitorización continua</div>
-        <div style="font-size:0.73rem;color:#8b949e;margin-top:3px">Si el modelo empieza a fallar más en producción, el sistema lo detecta y vuelve automáticamente a la versión anterior — sin intervención humana.</div>
       </div>
     </div>
   </div>
@@ -487,7 +481,7 @@ ul.il li::before{content:"▸";color:#58a6ff;flex-shrink:0}
 <!-- ── SLIDE 12: COSTE Y ROI ─────────────────────────────────── -->
 <div class="slide" id="s12">
   <div class="slide-tag">Inversión y retorno</div>
-  <div class="slide-title"><span>84.000€</span> construirlo · <span>512€/mes</span> operarlo</div>
+  <div class="slide-title"><span>50.000€</span> construirlo · <span>512€/mes</span> operarlo</div>
   <div class="slide-sub">Para 180.000 asegurados. El sistema más barato del mercado que además mantiene los datos en Europa.</div>
   <div class="g2">
     <div style="display:flex;flex-direction:column;gap:10px">
@@ -495,15 +489,15 @@ ul.il li::before{content:"▸";color:#58a6ff;flex-shrink:0}
         <table style="font-size:0.75rem">
           <thead><tr><th colspan="2">Coste de construcción (una sola vez)</th></tr></thead>
           <tbody>
-            <tr><td>Preparación y limpieza de datos</td><td style="text-align:right;color:#58a6ff">12.000 €</td></tr>
-            <tr><td>Modelo de actividad (IA)</td><td style="text-align:right;color:#58a6ff">12.000 €</td></tr>
-            <tr><td>Modelo de detección de caídas</td><td style="text-align:right;color:#58a6ff">12.000 €</td></tr>
-            <tr><td>App Android</td><td style="text-align:right;color:#58a6ff">12.000 €</td></tr>
-            <tr><td>Servidor e infraestructura</td><td style="text-align:right;color:#58a6ff">16.000 €</td></tr>
-            <tr><td>Automatización y monitorización</td><td style="text-align:right;color:#58a6ff">8.000 €</td></tr>
-            <tr><td>Legal y protección de datos</td><td style="text-align:right;color:#58a6ff">4.000 €</td></tr>
-            <tr><td>Pruebas de calidad y campo</td><td style="text-align:right;color:#58a6ff">8.000 €</td></tr>
-            <tr><td><strong style="color:#e6edf3">TOTAL</strong></td><td style="text-align:right;font-weight:700;color:#3fb950">84.000 €</td></tr>
+            <tr><td>Preparación y limpieza de datos</td><td style="text-align:right;color:#58a6ff">7.000 €</td></tr>
+            <tr><td>Modelo de actividad (IA)</td><td style="text-align:right;color:#58a6ff">7.000 €</td></tr>
+            <tr><td>Modelo de detección de caídas</td><td style="text-align:right;color:#58a6ff">7.000 €</td></tr>
+            <tr><td>App Android</td><td style="text-align:right;color:#58a6ff">7.000 €</td></tr>
+            <tr><td>Servidor e infraestructura</td><td style="text-align:right;color:#58a6ff">9.000 €</td></tr>
+            <tr><td>Automatización y monitorización</td><td style="text-align:right;color:#58a6ff">5.000 €</td></tr>
+            <tr><td>Legal y protección de datos</td><td style="text-align:right;color:#58a6ff">3.000 €</td></tr>
+            <tr><td>Pruebas de calidad y campo</td><td style="text-align:right;color:#58a6ff">5.000 €</td></tr>
+            <tr><td><strong style="color:#e6edf3">TOTAL</strong></td><td style="text-align:right;font-weight:700;color:#3fb950">50.000 €</td></tr>
           </tbody>
         </table>
       </div>
@@ -515,8 +509,7 @@ ul.il li::before{content:"▸";color:#58a6ff;flex-shrink:0}
             <tr><td>Servidor de respaldo</td><td style="text-align:right;color:#58a6ff">30 €</td></tr>
             <tr><td>Copias de seguridad y dominio</td><td style="text-align:right;color:#58a6ff">7 €</td></tr>
             <tr><td>Mantenimiento (10% de una persona)</td><td style="text-align:right;color:#58a6ff">400 €</td></tr>
-            <tr><td><strong style="color:#e6edf3">TOTAL / mes</strong></td><td style="text-align:right;font-weight:700;color:#3fb950">512 €/mes</td></tr>
-            <tr><td style="color:#8b949e">Por usuario</td><td style="text-align:right;color:#8b949e">0.003 €/usuario/mes</td></tr>
+            <tr><td><strong style="color:#e6edf3">TOTAL / mes</strong></td><td style="text-align:right;font-weight:700;color:#3fb950">512 €/mes · 0,003 €/usuario</td></tr>
           </tbody>
         </table>
       </div>
@@ -540,8 +533,8 @@ ul.il li::before{content:"▸";color:#58a6ff;flex-shrink:0}
           Intervención temprana en caídas graves:<br>
           180.000 asegurados × 2% incidencia × 30% intervenciones × 8.500€/caída<br>
           <strong style="color:#3fb950">= 9.180.000 € de ahorro al año</strong><br><br>
-          Coste total año 1: <strong>~90.000 €</strong><br>
-          <strong style="color:#3fb950">ROI estimado: 10.000% · Recuperación: &lt; 1 semana</strong>
+          Coste total año 1: <strong>~56.000 €</strong><br>
+          <strong style="color:#3fb950">ROI estimado: 16.000% · Recuperación: &lt; 1 semana</strong>
         </div>
         <div style="font-size:0.7rem;color:#8b949e;margin-top:5px">Estimación conservadora — sin contar mejora de retención ni reducción de primas.</div>
       </div>
@@ -555,7 +548,7 @@ ul.il li::before{content:"▸";color:#58a6ff;flex-shrink:0}
   <div class="slide-title">3 razones <span>que nos diferencian</span></div>
   <div class="slide-sub">Precio · Robustez · Ajuste al contexto — los tres criterios del jurado-cliente</div>
   <div class="g3" style="margin-bottom:14px;flex:0">
-    <div class="card blue"><div class="c-icon">💰</div><div class="c-title">Precio imbatible</div><div class="c-body">84.000€ de construcción + 512€/mes para 180.000 asegurados. <strong style="color:#58a6ff">9 veces más barato</strong> que cualquier API de terceros. Sin sorpresas de coste escalante.</div></div>
+    <div class="card blue"><div class="c-icon">💰</div><div class="c-title">Precio imbatible</div><div class="c-body">50.000€ de construcción + 512€/mes para 180.000 asegurados. <strong style="color:#58a6ff">9 veces más barato</strong> que cualquier API de terceros. Sin sorpresas de coste escalante.</div></div>
     <div class="card green"><div class="c-icon">🏆</div><div class="c-title">Robustez demostrada</div><div class="c-body">Validado con 54 personas distintas. <strong style="color:#3fb950">15 ancianos reales de 60-75 años.</strong> Sistema de 4 filtros para evitar falsas alarmas. Monitorización automática en producción.</div></div>
     <div class="card amber"><div class="c-icon">🎯</div><div class="c-title">Hecho para Vitalia</div><div class="c-body">Datos de movimiento jamás salen del móvil. <strong style="color:#d29922">Cumplimiento RGPD por diseño.</strong> Servidor propio en Europa. Integración directa con VitaPoints y prima dinámica.</div></div>
   </div>
@@ -590,8 +583,6 @@ const total=slides.length;
 let cur=0;
 function show(n){
   slides[cur].classList.remove('active');
-  slides[cur].classList.add('prev');
-  setTimeout(()=>slides[cur].classList.remove('prev'),400);
   cur=Math.max(0,Math.min(n,total-1));
   slides[cur].classList.add('active');
   document.getElementById('ctr').textContent=(cur+1)+' / '+total;
