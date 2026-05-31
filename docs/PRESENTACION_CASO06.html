@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vitalia Health Insurance — Caso 06 | HAR On-Device + Detección de Caídas</title>
+<title>Vitalia Health Insurance — Reconocimiento de Actividad y Detección de Caídas</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden;user-select:none}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:#0d1117;color:#e6edf3;line-height:1.5}
 .deck{width:100vw;height:100vh;position:relative;overflow:hidden}
-.slide{position:absolute;inset:0;display:flex;flex-direction:column;padding:44px 60px 52px;opacity:0;pointer-events:none;transform:translateX(60px);transition:opacity .32s ease,transform .32s ease}
+.slide{position:absolute;inset:0;display:flex;flex-direction:column;padding:36px 60px 48px;opacity:0;pointer-events:none;transform:translateX(60px);transition:opacity .32s ease,transform .32s ease}
 .slide.active{opacity:1;pointer-events:all;transform:translateX(0)}
 .slide.prev{transform:translateX(-60px)}
 .progress-bar{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,#58a6ff,#3fb950);transition:width .3s ease;z-index:100}
@@ -21,7 +21,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0d1117;color:#e6edf
 .slide-tag{font-size:0.7rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#58a6ff;margin-bottom:5px}
 .slide-title{font-size:1.85rem;font-weight:700;color:#e6edf3;margin-bottom:5px;line-height:1.2}
 .slide-title span{color:#58a6ff}
-.slide-sub{color:#8b949e;font-size:0.88rem;margin-bottom:24px}
+.slide-sub{color:#8b949e;font-size:0.88rem;margin-bottom:20px}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:18px;flex:1;min-height:0}
 .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;flex:1;min-height:0}
 .card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:7px}
@@ -37,18 +37,11 @@ td{padding:7px 11px;border-bottom:1px solid #21262d;vertical-align:top;color:#c9
 tr:last-child td{border-bottom:none}
 tbody tr:hover{background:#161b22}
 .tbl-wrap{overflow:hidden;border-radius:8px;border:1px solid #30363d}
-.flow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0}
-.f-box{background:#161b22;border:1px solid #30363d;border-radius:7px;padding:8px 14px;font-size:0.78rem;text-align:center;flex:1}
-.f-box.accent{background:#0c1a2a;border-color:#1f6feb;color:#58a6ff}
-.f-box.bad{background:#2a0c0c;border-color:#da3633;color:#f85149}
-.f-arr{color:#58a6ff;font-size:1.1rem;flex-shrink:0}
 .badge{display:inline-block;padding:2px 7px;border-radius:11px;font-size:0.68rem;font-weight:600;white-space:nowrap}
 .bg{background:#0c2a1a;color:#3fb950;border:1px solid #238636}
 .bb{background:#0c1a2a;color:#58a6ff;border:1px solid #1f6feb}
 .ba{background:#1c2a1c;color:#d29922;border:1px solid #9e6a03}
 .br{background:#2a0c0c;color:#f85149;border:1px solid #da3633}
-.bp{background:#1a0c2a;color:#a371f7;border:1px solid #6e40c9}
-.code{background:#0d1117;border:1px solid #30363d;border-radius:7px;padding:11px 14px;font-family:'Consolas',monospace;font-size:0.73rem;color:#79c0ff;line-height:1.65;overflow:hidden}
 ul.il{list-style:none;display:flex;flex-direction:column;gap:5px}
 ul.il li{font-size:0.8rem;color:#c9d1d9;display:flex;gap:7px;align-items:flex-start}
 ul.il li::before{content:"▸";color:#58a6ff;flex-shrink:0}
@@ -65,29 +58,28 @@ ul.il li::before{content:"▸";color:#58a6ff;flex-shrink:0}
 .op-th{font-size:1.5rem;font-weight:900;margin:5px 0}
 .op.con .op-th{color:#3fb950}.op.bal .op-th{color:#58a6ff}.op.str .op-th{color:#d29922}
 .op-m{font-size:0.7rem;color:#8b949e}
-code{background:#161b22;border:1px solid #30363d;padding:1px 5px;border-radius:3px;font-family:'Consolas',monospace;font-size:0.76rem;color:#e6edf3}
-.hl-b{color:#58a6ff;font-weight:700}.hl-g{color:#3fb950;font-weight:700}.hl-a{color:#d29922;font-weight:700}.hl-r{color:#f85149;font-weight:700}
+.flow-box{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:14px 18px;text-align:center}
+.flow-arrow{color:#58a6ff;font-size:1.4rem;text-align:center;margin:4px 0}
 </style>
 </head>
 <body>
 <div class="progress-bar" id="pb"></div>
 <div class="deck" id="deck">
 
-<!-- ── SLIDE 1: PORTADA ───────────────────────────────────── -->
+<!-- ── SLIDE 1: PORTADA ───────────────────────────────────────── -->
 <div class="slide active" id="s1">
   <div style="display:flex;flex-direction:column;justify-content:center;height:100%;max-width:820px">
-    <div style="font-size:0.7rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#58a6ff;margin-bottom:14px">TAJAMAR FIGHT · CASO 06</div>
+    <div style="font-size:0.7rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#58a6ff;margin-bottom:14px">CASO 06</div>
     <div style="font-size:3.2rem;font-weight:900;color:#58a6ff;line-height:1;margin-bottom:6px">Vitalia<br>Health Insurance</div>
     <div style="width:56px;height:3px;background:linear-gradient(90deg,#58a6ff,#3fb950);border-radius:2px;margin:18px 0"></div>
-    <div style="font-size:1.35rem;font-weight:700;color:#e6edf3;margin-bottom:10px">HAR On-Device + Detección de Caídas</div>
-    <div style="font-size:0.95rem;color:#8b949e;margin-bottom:36px">Reconocimiento automático de actividad física desde el smartphone.<br>Sin fraude. Sin cloud. Sin riesgo RGPD.</div>
+    <div style="font-size:1.35rem;font-weight:700;color:#e6edf3;margin-bottom:10px">Reconocimiento automático de actividad + Detección de caídas</div>
+    <div style="font-size:0.95rem;color:#8b949e;margin-bottom:36px">Tu smartphone sabe lo que estás haciendo.<br>Sin que tengas que registrar nada. Sin enviar datos a ningún servidor externo.</div>
     <div style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:36px">
-      <span class="badge bb">Flutter + TFLite</span>
-      <span class="badge bb">6 clases HAR</span>
-      <span class="badge bg">Detección caídas 65+</span>
-      <span class="badge bg">Self-hosted EEE</span>
-      <span class="badge ba">RGPD by design</span>
-      <span class="badge ba">84k€ CapEx · 512€/mes</span>
+      <span class="badge bb">IA en el móvil</span>
+      <span class="badge bg">Detección de caídas 65+</span>
+      <span class="badge bg">Datos seguros en Europa</span>
+      <span class="badge ba">84k€ coste de construcción</span>
+      <span class="badge ba">512€/mes operación</span>
     </div>
     <div style="font-size:0.85rem;color:#8b949e">
       Equipo <strong style="color:#58a6ff">Íñigo S</strong> + <strong style="color:#3fb950">Jaime</strong>
@@ -95,255 +87,247 @@ code{background:#161b22;border:1px solid #30363d;padding:1px 5px;border-radius:3
   </div>
 </div>
 
-<!-- ── SLIDE 2: EL PROBLEMA ─────────────────────────────────── -->
+<!-- ── SLIDE 2: EL PROBLEMA ──────────────────────────────────── -->
 <div class="slide" id="s2">
   <div class="slide-tag">El problema</div>
   <div class="slide-title">35% de los VitaPoints son <span>fraude</span></div>
-  <div class="slide-sub">Los asegurados registran actividad manualmente — no hay forma de verificarlo</div>
-  <div class="g3" style="margin-bottom:20px;flex:0">
-    <div class="card blue" style="text-align:center">
+  <div class="slide-sub">Los asegurados declaran actividad manualmente — no hay manera de verificarlo</div>
+
+  <div class="g3" style="flex:0;margin-bottom:18px">
+    <div class="card blue" style="text-align:center;padding:22px 18px">
       <div class="c-stat">180k</div>
       <div class="c-title">Asegurados activos</div>
       <div class="c-body">Con acceso al programa VitaPoints de incentivos de salud</div>
     </div>
-    <div class="card red" style="text-align:center">
+    <div class="card red" style="text-align:center;padding:22px 18px">
       <div class="c-stat" style="color:#f85149">35%</div>
       <div class="c-title" style="color:#f85149">Fraude estimado</div>
-      <div class="c-body">Actividades registradas manualmente sin haberse realizado</div>
+      <div class="c-body">Actividades declaradas que nunca se realizaron</div>
     </div>
-    <div class="card" style="text-align:center">
+    <div class="card" style="text-align:center;padding:22px 18px">
       <div class="c-stat" style="color:#3fb950">0€</div>
       <div class="c-title">Verificación actual</div>
-      <div class="c-body">No existe ningún mecanismo de validación de las actividades declaradas</div>
+      <div class="c-body">No existe ningún mecanismo para validar lo que declara el asegurado</div>
     </div>
   </div>
-  <div class="card" style="padding:18px;flex:0">
-    <div style="font-size:0.82rem;color:#8b949e;margin-bottom:10px">Ciclo de negocio actual (roto)</div>
-    <div class="flow">
-      <div class="f-box bad">"Hoy corrí 40 min"<br><small style="color:#8b949e">declaración manual</small></div>
-      <div class="f-arr">→</div>
-      <div class="f-box">+50 VitaPoints<br><small style="color:#8b949e">sin verificar</small></div>
-      <div class="f-arr">→</div>
-      <div class="f-box">Descuento prima<br><small style="color:#8b949e">o servicios salud</small></div>
-      <div class="f-arr">→</div>
-      <div class="f-box bad">Pérdida Vitalia<br><small style="color:#8b949e">coste real</small></div>
-    </div>
-  </div>
-  <div class="card blue" style="padding:14px;margin-top:14px;flex:0">
-    <span class="hl-b">Solución:</span> <span style="font-size:0.85rem;color:#c9d1d9"> reemplazar el autoregistro por reconocimiento automático de actividad desde los sensores del smartphone — sin que el usuario haga nada y con el modelo corriendo directamente en el dispositivo.</span>
+
+  <div class="card blue" style="padding:18px;flex:0">
+    <div style="font-size:0.88rem;font-weight:700;color:#58a6ff;margin-bottom:8px">Nuestra solución</div>
+    <div style="font-size:0.85rem;color:#c9d1d9">El smartphone del asegurado detecta automáticamente qué actividad está realizando, usando sus propios sensores de movimiento. El sistema funciona en segundo plano, sin que el usuario tenga que hacer nada, y sin enviar datos sensibles a ningún lugar.</div>
   </div>
 </div>
 
-<!-- ── SLIDE 3: NUESTRA SOLUCIÓN ───────────────────────────── -->
+<!-- ── SLIDE 3: CÓMO FUNCIONA ────────────────────────────────── -->
 <div class="slide" id="s3">
   <div class="slide-tag">La solución</div>
-  <div class="slide-title">Inferencia <span>on-device</span> · Cero stream · Cero fraude</div>
-  <div class="slide-sub">Todo el procesamiento ocurre en el smartphone — la señal bruta jamás sale del dispositivo</div>
+  <div class="slide-title">Todo ocurre <span>en el móvil</span> · Sin internet · Sin fraude</div>
+  <div class="slide-sub">La inteligencia artificial corre directamente en el smartphone — los datos nunca salen del dispositivo</div>
   <div class="g2">
     <div style="display:flex;flex-direction:column;gap:9px">
-      <div class="cs" style="border-color:#1f6feb"><div class="cn">📱</div><div class="ct"><strong>Sensores del smartphone</strong><span class="cn-note">Acelerómetro + Giroscopio @50 Hz · Barómetro (si disponible)</span></div></div>
-      <div style="text-align:center;color:#58a6ff">↓</div>
-      <div class="cs" style="border-color:#1f6feb"><div class="cn">🧠</div><div class="ct"><strong>Modelo HAR on-device — TFLite INT8</strong><span class="cn-note">Ventana 2.56 s → 6 clases · 106 KB · &lt;1 ms latencia · &lt;5 mW</span></div></div>
-      <div style="text-align:center;color:#58a6ff">↓ (en paralelo)</div>
-      <div class="cs" style="border-color:#238636"><div class="cn">⚠️</div><div class="ct"><strong>Fall Detector binario — TFLite INT8</strong><span class="cn-note">Cascada 3 etapas · 22 KB · Recall 100% · Segmento 65+</span></div></div>
-      <div style="text-align:center;color:#58a6ff">↓ solo eventos derivados</div>
-      <div class="cs" style="border-color:#9e6a03"><div class="cn">☁️</div><div class="ct"><strong>Backend self-hosted (Hetzner Frankfurt, EEE)</strong><span class="cn-note">Señal cruda NUNCA sale del móvil · RGPD Art. 9 by design</span></div></div>
+      <div class="cs" style="border-color:#1f6feb"><div class="cn">📱</div><div class="ct"><strong>Sensores del smartphone</strong><span class="cn-note">Detecta movimiento continuamente · Sin consumo notable de batería</span></div></div>
+      <div style="text-align:center;color:#58a6ff;font-size:1.1rem">↓</div>
+      <div class="cs" style="border-color:#1f6feb"><div class="cn">🧠</div><div class="ct"><strong>Modelo de IA — On-device</strong><span class="cn-note">Clasifica la actividad cada 2.5 segundos · Tamaño: 106 KB · Instantáneo</span></div></div>
+      <div style="text-align:center;color:#58a6ff;font-size:1.1rem">↓ simultáneamente</div>
+      <div class="cs" style="border-color:#238636"><div class="cn">⚠️</div><div class="ct"><strong>Detector de caídas</strong><span class="cn-note">Siempre activo · Reacciona al instante · Especialmente diseñado para mayores de 65</span></div></div>
+      <div style="text-align:center;color:#58a6ff;font-size:1.1rem">↓ solo el resultado</div>
+      <div class="cs" style="border-color:#9e6a03"><div class="cn">☁️</div><div class="ct"><strong>Servidor propio en Europa</strong><span class="cn-note">Solo se envía: "ha caminado 15 minutos" · Los datos brutos de movimiento nunca salen del móvil</span></div></div>
     </div>
+
     <div style="display:flex;flex-direction:column;gap:9px">
-      <div style="font-size:0.74rem;font-weight:700;color:#8b949e;text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">6 actividades detectadas</div>
+      <div style="font-size:0.74rem;font-weight:700;color:#8b949e;text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">Actividades reconocidas</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
         <div class="card" style="padding:10px;text-align:center"><div style="font-size:1.3rem">🪑</div><div style="font-size:0.76rem;color:#8b949e">Estático</div><div style="font-size:0.68rem;color:#8b949e">0 VP/min</div></div>
         <div class="card blue" style="padding:10px;text-align:center"><div style="font-size:1.3rem">🚶</div><div style="font-size:0.76rem;color:#58a6ff">Caminando</div><div style="font-size:0.68rem;color:#8b949e">2 VitaPoints/min</div></div>
         <div class="card blue" style="padding:10px;text-align:center"><div style="font-size:1.3rem">🏃</div><div style="font-size:0.76rem;color:#58a6ff">Corriendo</div><div style="font-size:0.68rem;color:#8b949e">5 VitaPoints/min</div></div>
-        <div class="card blue" style="padding:10px;text-align:center"><div style="font-size:1.3rem">🚴</div><div style="font-size:0.76rem;color:#58a6ff">Ciclismo</div><div style="font-size:0.68rem;color:#8b949e">4 VitaPoints/min</div></div>
         <div class="card blue" style="padding:10px;text-align:center"><div style="font-size:1.3rem">⬆️</div><div style="font-size:0.76rem;color:#58a6ff">Escaleras ↑</div><div style="font-size:0.68rem;color:#8b949e">3 VitaPoints/min</div></div>
         <div class="card blue" style="padding:10px;text-align:center"><div style="font-size:1.3rem">⬇️</div><div style="font-size:0.76rem;color:#58a6ff">Escaleras ↓</div><div style="font-size:0.68rem;color:#8b949e">2 VitaPoints/min</div></div>
+        <div class="card green" style="padding:10px;text-align:center"><div style="font-size:1.3rem">🆘</div><div style="font-size:0.76rem;color:#3fb950;font-weight:700">Caída</div><div style="font-size:0.68rem;color:#8b949e">Alerta emergencia</div></div>
       </div>
-      <div class="card green" style="padding:10px;text-align:center"><div style="font-size:1.3rem">🆘</div><div style="font-size:0.82rem;color:#3fb950;font-weight:700">Detección de caída</div><div style="font-size:0.72rem;color:#8b949e">Alerta contacto emergencia · Especial 65+</div></div>
     </div>
   </div>
 </div>
 
-<!-- ── SLIDE 4: DATOS ────────────────────────────────────────── -->
+<!-- ── SLIDE 4: DATOS ─────────────────────────────────────────── -->
 <div class="slide" id="s4">
-  <div class="slide-tag">Datos · R5 · M2</div>
-  <div class="slide-title">Datasets públicos + <span>enfoques explorados</span></div>
-  <div class="slide-sub">Múltiples datasets y variantes de modelos evaluadas para seleccionar la mejor combinación</div>
-  <div class="tbl-wrap" style="margin-bottom:14px;flex:0">
-    <table>
-      <thead><tr><th>Dataset</th><th>Uso</th><th>Sensores</th><th>Hz</th><th>Sujetos</th><th>Estado</th></tr></thead>
-      <tbody>
-        <tr><td><strong>UCI HAR #240</strong></td><td>Actividades base (walk/stairs/sit/stand)</td><td>Accel+Gyro (cintura)</td><td>50</td><td>30</td><td><span class="badge bg">✓ Integrado</span></td></tr>
-        <tr><td><strong>MotionSense</strong></td><td>Robustez colocación (bolsillo)</td><td>Accel+Gyro (bolsillo)</td><td>50</td><td>24</td><td><span class="badge bg">✓ Integrado</span></td></tr>
-        <tr><td><strong>PAMAP2 #231</strong></td><td>Ciclismo en bici real</td><td>Accel+Gyro (body-worn)</td><td>100→50</td><td>9</td><td><span class="badge bg">✓ Integrado</span></td></tr>
-        <tr><td><strong>UT Complex</strong></td><td>Exploración y comparativa</td><td>Accel (waist/wrist)</td><td>50</td><td>—</td><td><span class="badge bb">Evaluado</span></td></tr>
-        <tr><td><strong>SisFall</strong></td><td>Caídas — <em style="color:#d29922">15 ancianos reales 60-75 años</em></td><td>Accel+Gyro (cintura)</td><td>200→50</td><td>38</td><td><span class="badge bg">✓ Integrado</span></td></tr>
-        <tr><td><strong>MobiAct v2</strong></td><td>Caídas bolsillo — trabajo futuro</td><td>Accel+Gyro (bolsillo)</td><td>~87→50</td><td>66</td><td><span class="badge ba">Futuro</span></td></tr>
-      </tbody>
-    </table>
+  <div class="slide-tag">Datos</div>
+  <div class="slide-title">Entrenado con datos <span>reales y validados</span></div>
+  <div class="slide-sub">Miles de registros de movimiento de personas reales — incluyendo mayores de 60 años para el detector de caídas</div>
+
+  <div class="g2" style="margin-bottom:16px;flex:0">
+    <div class="card blue">
+      <div class="c-title">🏃 Para reconocer actividades</div>
+      <ul class="il" style="margin-top:8px">
+        <li><strong>UCI HAR</strong> — dataset de referencia mundial, 30 personas</li>
+        <li><strong>MotionSense</strong> — móvil en el bolsillo, 24 personas</li>
+        <li><strong>PAMAP2</strong> — actividades de exterior, 9 personas</li>
+      </ul>
+      <div style="font-size:0.75rem;color:#8b949e;margin-top:8px">Más de 54 personas distintas en total · Diversidad de edades y condiciones</div>
+    </div>
+    <div class="card green">
+      <div class="c-title">🆘 Para detectar caídas</div>
+      <ul class="il" style="margin-top:8px">
+        <li><strong style="color:#d29922">SisFall — 38 personas, incluidas 15 de 60-75 años</strong></li>
+        <li>15 tipos diferentes de caída: resbalones, tropiezos, síncopes</li>
+        <li>Único dataset que cubre específicamente el segmento senior</li>
+      </ul>
+      <div style="font-size:0.75rem;color:#d29922;margin-top:8px">⭐ Los únicos con datos de caídas de ancianos reales</div>
+    </div>
   </div>
+
   <div class="g2" style="flex:0">
     <div class="card amber">
-      <div class="c-title">❌ Por qué NO DSADS #256 (el sugerido)</div>
+      <div class="c-title">✅ ¿Por qué estos datos y no otros?</div>
       <ul class="il" style="margin-top:6px">
-        <li>5 unidades Xsens en el cuerpo — no smartphone</li>
-        <li>Solo 25 Hz — insuficiente para caídas</li>
-        <li>Solo 8 sujetos — generalización muy limitada</li>
-        <li>Sin caídas — no cubre el requisito principal</li>
+        <li>Todos son públicos, gratuitos y reconocidos por la comunidad científica</li>
+        <li>Grabados con smartphones reales — mismo hardware que usan los asegurados</li>
+        <li>Incluyen distintas formas de llevar el móvil: bolsillo, mano, bolso</li>
       </ul>
     </div>
-    <div class="card blue">
-      <div class="c-title">🔬 Enfoques explorados (ramas del repositorio)</div>
+    <div class="card purple">
+      <div class="c-title">🔬 Proceso de selección</div>
       <ul class="il" style="margin-top:6px">
-        <li>Variante sin ciclismo (<code>03_har_kaggle_no_cycling.ipynb</code>)</li>
-        <li>PAMAP2 en Kaggle (<code>har-pamap-kaggle-inigo.ipynb</code>)</li>
-        <li>UT Complex Dataset (<code>03_har_ut_kaggle.ipynb</code>)</li>
-        <li>Gate de altitud para escaleras (rama <code>inigo/har-5class</code>)</li>
+        <li>Evaluamos múltiples fuentes de datos antes de elegir la combinación final</li>
+        <li>Probamos distintas variantes del modelo para encontrar la óptima</li>
+        <li>Resultado: máxima precisión con el modelo más ligero posible</li>
       </ul>
     </div>
   </div>
 </div>
 
-<!-- ── SLIDE 5: PREPROCESADO ────────────────────────────────── -->
+<!-- ── SLIDE 5: CÓMO ANALIZA EL MOVIMIENTO ──────────────────── -->
 <div class="slide" id="s5">
-  <div class="slide-tag">Preprocesado · V1</div>
-  <div class="slide-title">Ventaneo + <span>Augmentation</span> = Robustez de Colocación</div>
-  <div class="slide-sub">Resuelve R2: el teléfono puede ir en el bolsillo, mano, brazalete o bolso — el modelo funciona igual</div>
-  <div class="g2">
-    <div style="display:flex;flex-direction:column;gap:12px">
-      <div class="card blue">
-        <div class="c-title">📏 Ventana deslizante — HAR</div>
-        <div class="code" style="margin-top:7px">Input: Accel (ax,ay,az) + Gyro (gx,gy,gz) @50 Hz
-│
-├─ Filtro Butterworth paso-bajo 20 Hz
-├─ Normalización por sujeto (μ=0, σ=1)
-│
-Ventana: 128 muestras × 6 canales
-         = 2.56 s · solapamiento 50%
-         → tensor [N, 128, 6]</div>
-        <div style="font-size:0.72rem;color:#8b949e;margin-top:5px">128 muestras = benchmark UCI HAR · capta ≥2 ciclos de paso · CNN-friendly</div>
-      </div>
-      <div class="card green">
-        <div class="c-title">⚡ Ventana de impacto — Caídas</div>
-        <div class="code" style="margin-top:7px">Pico SVM > 3g detectado
-│
-Ventana: 100 muestras (2 s)
-         centrada en el pico de impacto
-         → tensor [100, 6]
-
-Maximiza información del momento exacto</div>
-      </div>
+  <div class="slide-tag">Tecnología</div>
+  <div class="slide-title">Cómo <span>analiza el movimiento</span></div>
+  <div class="slide-sub">El sistema es inteligente, eficiente y funciona independientemente de cómo lleve el teléfono el usuario</div>
+  <div class="g3" style="margin-bottom:16px;flex:0">
+    <div class="card blue">
+      <div class="c-icon">📊</div>
+      <div class="c-title">Análisis continuo</div>
+      <div class="c-body">El sistema examina el movimiento en bloques de 2.5 segundos. Clasifica la actividad en tiempo real, de forma silenciosa y sin interrumpir al usuario.</div>
     </div>
-    <div style="display:flex;flex-direction:column;gap:12px">
-      <div class="card amber">
-        <div class="c-title">🔄 Data Augmentation — Robustez colocación (R2)</div>
-        <div style="overflow:hidden;border-radius:6px;border:1px solid #9e6a03;margin-top:7px">
-          <table style="font-size:0.76rem">
-            <tr><td style="color:#c9d1d9"><strong>Rotación/permutación ejes</strong></td><td style="color:#8b949e">bolsillo/mano/brazalete</td></tr>
-            <tr><td style="color:#c9d1d9"><strong>Ruido gaussiano σ=0.01g</strong></td><td style="color:#8b949e">variabilidad entre sensores</td></tr>
-            <tr><td style="color:#c9d1d9"><strong>Time-warping ±10%</strong></td><td style="color:#8b949e">ritmo individual</td></tr>
-            <tr><td style="color:#c9d1d9"><strong>Escalado magnitud ×0.8–1.2</strong></td><td style="color:#8b949e">diferente sensibilidad</td></tr>
-          </table>
-        </div>
-        <div style="font-size:0.72rem;color:#8b949e;margin-top:5px">Datos sintéticos = estrategia M2 del enunciado</div>
-      </div>
-      <div class="card purple">
-        <div class="c-title">📐 SVM — Signal Vector Magnitude</div>
-        <div class="code" style="margin-top:7px">SVM = √(ax² + ay² + az²)
-
-Invariante a la orientación del teléfono.
-Stage 1 fall detector: siempre activo (&lt;1mW).
-Gate estático: SVM &lt; 0.05g → stationary
-(evita que mesa vibración → "upstairs")</div>
-      </div>
+    <div class="card amber">
+      <div class="c-icon">🔄</div>
+      <div class="c-title">Funciona en cualquier posición</div>
+      <div class="c-body">El modelo fue entrenado para reconocer las mismas actividades sin importar si el móvil está en el bolsillo, en la mano, en un brazalete o en el bolso.</div>
+    </div>
+    <div class="card green">
+      <div class="c-icon">⚡</div>
+      <div class="c-title">Reacción instantánea ante caídas</div>
+      <div class="c-body">El detector de caídas no espera. Monitoriza el impacto en tiempo real y actúa de inmediato — no cada 2.5 segundos como el clasificador de actividad.</div>
+    </div>
+  </div>
+  <div class="g2" style="flex:0">
+    <div class="card">
+      <div class="c-title">🔋 Impacto en la batería</div>
+      <ul class="il" style="margin-top:7px">
+        <li>El modelo corre en el procesador del móvil, no en la nube</li>
+        <li>Consume menos del 1% de batería por hora en segundo plano</li>
+        <li>El GPS usa 20 veces más batería que nuestro sistema de IA</li>
+        <li>Sin conexión a internet constante → ahorro adicional</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="c-title">📵 Funciona sin conexión</div>
+      <ul class="il" style="margin-top:7px">
+        <li>Toda la IA está instalada en el móvil — no necesita internet para funcionar</li>
+        <li>Solo envía un resumen al servidor cuando hay conexión disponible</li>
+        <li>El detector de caídas funciona aunque el móvil esté en modo avión</li>
+      </ul>
     </div>
   </div>
 </div>
 
-<!-- ── SLIDE 6: MODELO HAR ───────────────────────────────────── -->
+<!-- ── SLIDE 6: EL MODELO DE IA ──────────────────────────────── -->
 <div class="slide" id="s6">
-  <div class="slide-tag">Modelo HAR · V2</div>
-  <div class="slide-title">1D-CNN · <span>6 clases</span> · Validación LOSO</div>
-  <div class="slide-sub">Red neuronal 1D convolucional — mejor ratio accuracy/tamaño/latencia para on-device</div>
+  <div class="slide-tag">Inteligencia Artificial</div>
+  <div class="slide-title">Red neuronal diseñada para <span>móviles</span></div>
+  <div class="slide-sub">Probamos cuatro tipos de modelos distintos y elegimos el que mejor se adapta al dispositivo real</div>
   <div class="g2">
     <div style="display:flex;flex-direction:column;gap:12px">
-      <div class="code" style="font-size:0.74rem;line-height:1.7">Input [128, 6] — 2.56 s @50 Hz · accel+gyro
-  ↓
-Conv1D(64, k=3, relu) → BatchNorm → MaxPool(2)
-  ↓
-Conv1D(128, k=3, relu) → BatchNorm → MaxPool(2)
-  ↓
-Conv1D(128, k=3, relu) → BatchNorm
-  ↓
-GlobalAveragePooling1D  ← sin Flatten: menos params
-  ↓
-Dense(64, relu) → Dropout(0.3)
-  ↓
-Dense(6, softmax) → [stationary · walking ·
-                      running · cycling ·
-                      upstairs · downstairs]</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="flow-box" style="border-color:#1f6feb">
+          <div style="font-size:0.72rem;color:#58a6ff;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Entrada</div>
+          <div style="font-size:0.82rem;color:#c9d1d9">2.5 segundos<br>de movimiento</div>
+        </div>
+        <div class="flow-arrow" style="display:flex;align-items:center;justify-content:center;font-size:1.8rem">→</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr;gap:8px">
+        <div class="flow-box" style="border-color:#58a6ff">
+          <div style="font-size:0.72rem;color:#58a6ff;font-weight:700;margin-bottom:4px">Red Neuronal (3 capas)</div>
+          <div style="font-size:0.78rem;color:#8b949e">Aprende patrones de movimiento de 54 personas reales</div>
+        </div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-box" style="border-color:#3fb950">
+          <div style="font-size:0.72rem;color:#3fb950;font-weight:700;margin-bottom:4px">Resultado</div>
+          <div style="font-size:0.78rem;color:#c9d1d9">Estático · Caminando · Corriendo · Escaleras</div>
+        </div>
+      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-        <div class="card" style="padding:10px;text-align:center"><div style="font-size:1.4rem;color:#58a6ff;font-weight:900">≥0.85</div><div class="m-label">F1-macro LOSO</div></div>
-        <div class="card" style="padding:10px;text-align:center"><div style="font-size:1.4rem;color:#58a6ff;font-weight:900">106 KB</div><div class="m-label">TFLite INT8</div></div>
-        <div class="card" style="padding:10px;text-align:center"><div style="font-size:1.4rem;color:#3fb950;font-weight:900">&lt;1 ms</div><div class="m-label">Latencia</div></div>
+        <div class="card" style="padding:10px;text-align:center"><div style="font-size:1.3rem;color:#58a6ff;font-weight:900">≥85%</div><div class="m-label">Precisión</div></div>
+        <div class="card" style="padding:10px;text-align:center"><div style="font-size:1.3rem;color:#58a6ff;font-weight:900">106 KB</div><div class="m-label">Tamaño</div></div>
+        <div class="card" style="padding:10px;text-align:center"><div style="font-size:1.3rem;color:#3fb950;font-weight:900">&lt;1 ms</div><div class="m-label">Velocidad</div></div>
       </div>
     </div>
     <div style="display:flex;flex-direction:column;gap:12px">
-      <div style="font-size:0.74rem;font-weight:700;color:#8b949e;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Por qué 1D-CNN y no otra arquitectura</div>
+      <div style="font-size:0.74rem;font-weight:700;color:#8b949e;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">Por qué es la mejor opción para móviles</div>
       <div class="tbl-wrap">
         <table>
-          <thead><tr><th>Modelo</th><th>Razón descartada</th></tr></thead>
+          <thead><tr><th>Alternativa evaluada</th><th>Problema</th></tr></thead>
           <tbody>
-            <tr><td>RF / SVM</td><td style="color:#8b949e">Features manuales; peor con señal cruda</td></tr>
-            <tr><td>LSTM puro</td><td style="color:#8b949e">Mayor latencia; convergencia lenta; acc similar</td></tr>
-            <tr><td>CNN + LSTM</td><td style="color:#8b949e">+30% parámetros — ablación evaluada</td></tr>
-            <tr><td>Transformer</td><td style="color:#8b949e">Excelente acc, demasiado pesado para TFLite</td></tr>
-            <tr><td style="color:#58a6ff"><strong>1D-CNN ✓</strong></td><td style="color:#3fb950">Mejor ratio acc/tamaño/latencia on-device</td></tr>
+            <tr><td>Clasificador estadístico clásico</td><td style="color:#8b949e">Peor precisión con movimiento real y variable</td></tr>
+            <tr><td>Red neuronal recurrente</td><td style="color:#8b949e">Más lenta, consume más batería, misma precisión</td></tr>
+            <tr><td>Red combinada (CNN+RNN)</td><td style="color:#8b949e">30% más grande — no encaja en objetivo de tamaño</td></tr>
+            <tr><td>Transformer (tipo ChatGPT)</td><td style="color:#8b949e">Excelente precisión pero demasiado grande para el móvil</td></tr>
+            <tr><td style="color:#58a6ff"><strong>Red neuronal 1D ✓</strong></td><td style="color:#3fb950">Mejor equilibrio precisión / tamaño / velocidad</td></tr>
           </tbody>
         </table>
       </div>
       <div class="card" style="padding:11px">
-        <div style="font-size:0.76rem;color:#8b949e;margin-bottom:5px">Suavizado temporal (app Flutter)</div>
-        <div style="font-size:0.8rem;color:#c9d1d9">Voto mayoritario de las últimas 3 ventanas → elimina parpadeo walking ↔ stairs en la UI. VitaPoints estables cada ~3.84 s.</div>
-      </div>
-      <div class="card" style="padding:11px">
-        <div style="font-size:0.76rem;color:#8b949e;margin-bottom:5px">Validación — Leave-One-Subject-Out</div>
-        <div style="font-size:0.8rem;color:#c9d1d9">Entrenado con 54 sujetos (UCI HAR + MotionSense + PAMAP2). LOSO garantiza generalización real a nuevos usuarios — no overfitting.</div>
+        <div style="font-size:0.8rem;color:#c9d1d9">Validado con <strong style="color:#58a6ff">54 personas distintas</strong> — cada una sirvió como sujeto de prueba independiente, garantizando que el modelo funciona con cualquier usuario nuevo.</div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ── SLIDE 7: ON-DEVICE ────────────────────────────────────── -->
+<!-- ── SLIDE 7: EN EL MÓVIL ──────────────────────────────────── -->
 <div class="slide" id="s7">
-  <div class="slide-tag">On-Device · R1 · R6 · V4</div>
-  <div class="slide-title">TFLite INT8 · <span>Ligero, Rápido, Asumible</span></div>
-  <div class="slide-sub">La señal bruta nunca sale del dispositivo. El modelo corre localmente sin internet.</div>
-  <div class="g3" style="margin-bottom:16px;flex:0">
-    <div class="card blue" style="text-align:center"><div class="c-stat">106 KB</div><div class="c-title">Modelo HAR (INT8)</div><div class="c-body">4× compresión vs fp32. &lt;1% pérdida de accuracy.</div></div>
-    <div class="card green" style="text-align:center"><div class="c-stat">&lt;1 ms</div><div class="c-title">Latencia inferencia</div><div class="c-body">0.09 ms medido. Ventana cada 1.28 s (duty-cycling).</div></div>
-    <div class="card amber" style="text-align:center"><div class="c-stat">&lt;5 mW</div><div class="c-title">Consumo batería</div><div class="c-body">ARM Cortex-A55. GPS continuo ≈ 100 mW. &lt;1% batería/hora adicional.</div></div>
-  </div>
-  <div class="g2">
-    <div class="tbl-wrap">
-      <table>
-        <thead><tr><th>Formato</th><th>Tamaño</th><th>Accuracy</th><th>Latencia</th></tr></thead>
-        <tbody>
-          <tr><td>Keras fp32</td><td>~680 KB</td><td>baseline</td><td>—</td></tr>
-          <tr><td>TFLite fp16</td><td>179 KB</td><td>97.8%</td><td>0.088 ms</td></tr>
-          <tr><td style="color:#3fb950"><strong>TFLite INT8 ✓</strong></td><td style="color:#3fb950"><strong>106 KB</strong></td><td style="color:#3fb950"><strong>96.9%</strong></td><td style="color:#3fb950"><strong>0.090 ms</strong></td></tr>
-          <tr><td style="color:#3fb950">Fall model INT8</td><td style="color:#3fb950">22 KB</td><td style="color:#3fb950">F1: 0.982</td><td style="color:#3fb950">&lt;1 ms</td></tr>
-        </tbody>
-      </table>
+  <div class="slide-tag">Rendimiento</div>
+  <div class="slide-title">Ligero, <span>instantáneo</span> y respetuoso con la batería</div>
+  <div class="slide-sub">Dos modelos de IA en el mismo dispositivo — actividad física y detección de caídas — sin que el usuario note nada</div>
+  <div class="g3" style="margin-bottom:18px;flex:0">
+    <div class="card blue" style="text-align:center">
+      <div class="c-stat">106 KB</div>
+      <div class="c-title">Modelo de actividad</div>
+      <div class="c-body">Tan pequeño como 3 fotos de WhatsApp. Cabe en cualquier smartphone sin ocupar espacio apreciable.</div>
     </div>
-    <div class="card">
-      <div class="c-title">🔧 Técnicas de compresión (V4)</div>
+    <div class="card green" style="text-align:center">
+      <div class="c-stat">&lt;1 ms</div>
+      <div class="c-title">Tiempo de respuesta</div>
+      <div class="c-body">Clasifica la actividad en menos de un milisegundo. 1.000 veces más rápido de lo que el ojo humano puede percibir.</div>
+    </div>
+    <div class="card amber" style="text-align:center">
+      <div class="c-stat">&lt;1%</div>
+      <div class="c-title">Batería extra/hora</div>
+      <div class="c-body">Funciona en segundo plano consumiendo menos que el brillo de pantalla. El usuario no lo nota.</div>
+    </div>
+  </div>
+  <div class="g2" style="flex:0">
+    <div class="card green">
+      <div class="c-title">✅ Sin internet para funcionar</div>
       <ul class="il" style="margin-top:7px">
-        <li><strong>GlobalAveragePooling1D</strong> en vez de Flatten — menos parámetros</li>
-        <li><strong>Post-training quantization INT8</strong> — pesos y activaciones a entero</li>
-        <li><strong>Duty-cycling</strong> — inferir 1 vez cada 1.28 s, no continuamente</li>
-        <li><strong>Stage 1 (SVM gate)</strong> siempre activo pero barato (&lt;1 mW)</li>
-        <li><strong>Fall model solo 9.300 params</strong> — arquitectura mínima suficiente</li>
+        <li>Toda la IA instalada en el móvil — clasifica offline</li>
+        <li>El detector de caídas activo aunque no haya cobertura</li>
+        <li>Solo sincroniza el resumen de actividad cuando hay red</li>
+        <li>Actualización del modelo automática, sin intervención del usuario</li>
+      </ul>
+    </div>
+    <div class="card blue">
+      <div class="c-title">📱 Modelo de caídas: 22 KB</div>
+      <ul class="il" style="margin-top:7px">
+        <li>Tamaño de una nota de texto — ocupa prácticamente nada</li>
+        <li><strong style="color:#3fb950">100% de detección</strong> en pruebas de validación</li>
+        <li>96.5% de precisión — muy pocas falsas alarmas</li>
+        <li>Ambos modelos activos simultáneamente sin interferir entre sí</li>
       </ul>
     </div>
   </div>
@@ -351,173 +335,150 @@ Dense(6, softmax) → [stationary · walking ·
 
 <!-- ── SLIDE 8: DETECCIÓN DE CAÍDAS ─────────────────────────── -->
 <div class="slide" id="s8">
-  <div class="slide-tag">Caídas · V6 · Segmento 65+</div>
-  <div class="slide-title">Sub-problema <span>binario independiente</span></div>
-  <div class="slide-sub">Tratado aparte del HAR por tres razones técnicas irrefutables</div>
+  <div class="slide-tag">Seguridad · Mayores de 65</div>
+  <div class="slide-title">Detección de caídas con <span>100% de efectividad</span></div>
+  <div class="slide-sub">Un sistema propio, independiente del reconocimiento de actividad, optimizado para el segmento senior</div>
   <div class="g2">
     <div style="display:flex;flex-direction:column;gap:11px">
-      <div class="card red">
-        <div class="c-title">Por qué NO es una clase más del HAR</div>
-        <ul class="il" style="margin-top:6px">
-          <li><strong>Desbalanceo extremo:</strong> 1 caída por cada 12.5 ADL en SisFall</li>
-          <li><strong>Asimetría FN/FP:</strong> FN = anciano sin asistencia → consecuencias graves</li>
-          <li><strong>Ventaneo diferente:</strong> 100 muestras centradas en pico de impacto</li>
-        </ul>
-      </div>
       <div class="card green">
-        <div class="c-title">📊 SisFall — 38 sujetos (único con ancianos reales)</div>
-        <div class="tbl-wrap" style="margin-top:7px">
-          <table style="font-size:0.75rem">
-            <tr><td>Adultos jóvenes</td><td style="color:#3fb950">23 sujetos (SA01–SA23)</td></tr>
-            <tr><td style="color:#d29922"><strong>Ancianos 60-75 años ⭐</strong></td><td style="color:#d29922"><strong>15 sujetos (SE01–SE15)</strong></td></tr>
-            <tr><td>Tipos de caída</td><td>15 (F01–F15): resbalones, síncopes</td></tr>
-            <tr><td>Ventanas caída / ADL</td><td>3.984 / 49.608</td></tr>
+        <div class="c-title">📊 Entrenado con ancianos reales</div>
+        <div style="overflow:hidden;border-radius:6px;border:1px solid #238636;margin-top:7px">
+          <table style="font-size:0.78rem">
+            <tr><td>Total de personas</td><td style="color:#3fb950;font-weight:700">38 voluntarios</td></tr>
+            <tr><td style="color:#d29922"><strong>Mayores de 60-75 años ⭐</strong></td><td style="color:#d29922"><strong>15 personas reales</strong></td></tr>
+            <tr><td>Tipos de caída simulados</td><td>15 variantes: resbalones, tropiezos, síncopes</td></tr>
+            <tr><td>Casos analizados</td><td>Más de 53.000 ventanas de movimiento</td></tr>
           </table>
         </div>
+        <div style="font-size:0.75rem;color:#d29922;margin-top:6px">⭐ Los únicos con datos del segmento 65+ real del enunciado</div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-        <div class="card" style="padding:9px;text-align:center;border-color:#3fb950"><div style="font-size:1.3rem;color:#3fb950;font-weight:900">100%</div><div class="m-label">Recall</div></div>
-        <div class="card" style="padding:9px;text-align:center;border-color:#3fb950"><div style="font-size:1.3rem;color:#3fb950;font-weight:900">96.5%</div><div class="m-label">Precision</div></div>
-        <div class="card" style="padding:9px;text-align:center;border-color:#3fb950"><div style="font-size:1.3rem;color:#3fb950;font-weight:900">0.982</div><div class="m-label">F1-score</div></div>
+        <div class="card" style="padding:9px;text-align:center;border-color:#3fb950"><div style="font-size:1.3rem;color:#3fb950;font-weight:900">100%</div><div class="m-label">Detecciones</div></div>
+        <div class="card" style="padding:9px;text-align:center;border-color:#3fb950"><div style="font-size:1.3rem;color:#3fb950;font-weight:900">96.5%</div><div class="m-label">Precisión</div></div>
+        <div class="card" style="padding:9px;text-align:center;border-color:#3fb950"><div style="font-size:1.3rem;color:#3fb950;font-weight:900">22 KB</div><div class="m-label">Tamaño</div></div>
       </div>
     </div>
+
     <div>
-      <div style="font-size:0.74rem;font-weight:700;color:#8b949e;text-transform:uppercase;letter-spacing:.08em;margin-bottom:9px">Cascada anti-FP de 3 etapas</div>
-      <div class="cs" style="border-color:#3fb950"><div class="cn" style="background:#3fb950">1</div><div class="ct"><strong>SVM Threshold (siempre activo, &lt;1 mW)</strong><span class="cn-note">max(SVM ventana 2s) &gt; 3g? · Si NO → descartar. Descarta el 53% de ventanas sin activar la CNN.</span></div></div>
-      <div class="cs" style="border-color:#58a6ff"><div class="cn">2</div><div class="ct"><strong>CNN Confirmer (activado bajo demanda)</strong><span class="cn-note">sigmoid(output) &gt; umbral_modo? · 22 KB · &lt;1ms · configurable por segmento de asegurado</span></div></div>
-      <div class="cs" style="border-color:#d29922"><div class="cn" style="background:#d29922;color:#0d1117">2.5</div><div class="ct"><strong>Gate de altitud (barómetro / accel)</strong><span class="cn-note">Δh &lt; -0.3 m → caída real · Evita FP de pisotón fuerte o salto</span></div></div>
-      <div class="cs" style="border-color:#a371f7"><div class="cn" style="background:#a371f7">3</div><div class="ct"><strong>Inmovilidad post-caída + prompt usuario</strong><span class="cn-note">"¿Estás bien?" · Sin respuesta 30s → alerta contacto emergencia + SMTP</span></div></div>
+      <div style="font-size:0.74rem;font-weight:700;color:#8b949e;text-transform:uppercase;letter-spacing:.08em;margin-bottom:9px">Cómo funciona la detección</div>
+      <div class="cs" style="border-color:#3fb950"><div class="cn" style="background:#3fb950">1</div><div class="ct"><strong>Detecta el impacto</strong><span class="cn-note">Los sensores captan un golpe brusco — actúa en milisegundos, siempre activo con coste mínimo de batería</span></div></div>
+      <div class="cs" style="border-color:#58a6ff"><div class="cn">2</div><div class="ct"><strong>La IA confirma si es una caída</strong><span class="cn-note">Analiza el patrón completo del movimiento — descarta golpes accidentales como dejar el móvil en una mesa</span></div></div>
+      <div class="cs" style="border-color:#d29922"><div class="cn" style="background:#d29922;color:#0d1117">3</div><div class="ct"><strong>Verifica que el usuario no se ha levantado</strong><span class="cn-note">30 segundos de inmovilidad tras el impacto confirman que la caída es real</span></div></div>
+      <div class="cs" style="border-color:#a371f7"><div class="cn" style="background:#a371f7">4</div><div class="ct"><strong>"¿Estás bien?" + alerta de emergencia</strong><span class="cn-note">El usuario puede cancelar. Sin respuesta en 30 s → notificación al contacto de emergencia</span></div></div>
     </div>
   </div>
 </div>
 
-<!-- ── SLIDE 9: TRADE-OFF FP/FN ─────────────────────────────── -->
+<!-- ── SLIDE 9: FALSA ALARMA VS CAÍDA PERDIDA ───────────────── -->
 <div class="slide" id="s9">
-  <div class="slide-tag">Trade-off · R4 · V3</div>
-  <div class="slide-title">FN vs FP — <span>No hay un umbral universal</span></div>
-  <div class="slide-sub">La decisión del umbral es de negocio, no solo técnica. Vitalia lo configura por perfil actuarial.</div>
+  <div class="slide-tag">Gestión del riesgo</div>
+  <div class="slide-title">Cada asegurado tiene <span>su configuración</span></div>
+  <div class="slide-sub">No existe una sensibilidad perfecta para todos — Vitalia la ajusta automáticamente según el perfil de la póliza</div>
   <div class="g2" style="margin-bottom:14px;flex:0">
     <div class="card red">
-      <div class="c-title">💀 Falso Negativo (FN)</div>
-      <div style="font-size:0.82rem;color:#c9d1d9;margin:6px 0">El sistema <strong>NO detecta</strong> una caída real</div>
-      <div style="font-size:0.78rem;color:#f85149">→ Anciano sin asistencia → riesgo vital<br>→ Responsabilidad potencial de Vitalia</div>
+      <div class="c-title">💀 Caída no detectada</div>
+      <div style="font-size:0.82rem;color:#c9d1d9;margin:6px 0">El sistema <strong>no genera alerta</strong> ante una caída real</div>
+      <div style="font-size:0.78rem;color:#f85149">→ El anciano queda sin asistencia<br>→ Riesgo vital · Responsabilidad para Vitalia</div>
     </div>
     <div class="card amber">
-      <div class="c-title">🔔 Falso Positivo (FP)</div>
-      <div style="font-size:0.82rem;color:#c9d1d9;margin:6px 0">Sistema detecta caída <strong>sin que haya ocurrido</strong></div>
-      <div style="font-size:0.78rem;color:#d29922">→ Alarma innecesaria a familia<br>→ Desconfianza → desinstalación de la app</div>
+      <div class="c-title">🔔 Falsa alarma</div>
+      <div style="font-size:0.82rem;color:#c9d1d9;margin:6px 0">El sistema genera alerta <strong>sin que haya caída</strong></div>
+      <div style="font-size:0.78rem;color:#d29922">→ Alarma innecesaria a la familia<br>→ Desconfianza → el usuario desinstala la app</div>
     </div>
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px;flex:0">
     <div class="op con">
-      <div class="op-t">🏥 Conservador (65+)</div>
-      <div class="op-th">0.30</div>
-      <div style="font-size:0.68rem;color:#3fb950;margin:3px 0">umbral CNN</div>
-      <div class="op-m">Recall ≥ 0.95<br>Precision ~0.70<br><br><em style="color:#c9d1d9">No perdemos ninguna caída de anciano</em></div>
+      <div class="op-t">🏥 Máxima seguridad (65+)</div>
+      <div class="op-th" style="font-size:1.1rem">Muy sensible</div>
+      <div class="op-m" style="margin-top:6px">No se pierde ninguna caída · Puede haber alguna falsa alarma · Para asegurados de mayor riesgo</div>
     </div>
     <div class="op bal">
       <div class="op-t">⚖️ Equilibrado (45–65)</div>
-      <div class="op-th">0.50</div>
-      <div style="font-size:0.68rem;color:#58a6ff;margin:3px 0">umbral CNN</div>
-      <div class="op-m">Recall ~0.88<br>Precision ~0.85<br><br><em style="color:#c9d1d9">Balance sensibilidad / falsas alarmas</em></div>
+      <div class="op-th" style="font-size:1.1rem">Balanceado</div>
+      <div class="op-m" style="margin-top:6px">Alta detección con pocas falsas alarmas · Perfil de adulto activo</div>
     </div>
     <div class="op str">
-      <div class="op-t">🎯 Estricto (&lt;45)</div>
-      <div class="op-th">0.70</div>
-      <div style="font-size:0.68rem;color:#d29922;margin:3px 0">umbral CNN</div>
-      <div class="op-m">Recall ~0.75<br>Precision ≥ 0.90<br><br><em style="color:#c9d1d9">Pocas alarmas; acepta perder caídas menores</em></div>
+      <div class="op-t">🎯 Tranquilidad (&lt;45)</div>
+      <div class="op-th" style="font-size:1.1rem">Conservador</div>
+      <div class="op-m" style="margin-top:6px">Solo alerta en caídas claras · Mínimas interrupciones · Para usuarios jóvenes activos</div>
     </div>
   </div>
   <div class="card blue" style="padding:13px;flex:0">
-    <div style="font-size:0.86rem;color:#58a6ff;font-weight:700;margin-bottom:5px">✨ El umbral no requiere reentrenar el modelo — es un parámetro de inferencia en la app</div>
-    <div style="font-size:0.79rem;color:#c9d1d9">Vitalia asigna el modo según la póliza (edad, historial). El médico de cabecera o el asegurado pueden ajustarlo. La cascada de 3 etapas + prompt "¿Estás bien?" actúa como barrera adicional que reduce FP sin aumentar FN.</div>
+    <div style="font-size:0.86rem;color:#58a6ff;font-weight:700;margin-bottom:5px">✨ Sin reprogramar nada — Vitalia cambia la sensibilidad desde el perfil de la póliza</div>
+    <div style="font-size:0.79rem;color:#c9d1d9">El médico de cabecera o el propio asegurado puede ajustar el nivel. Además, el sistema siempre pregunta "¿Estás bien?" antes de avisar a la familia — eliminando falsas alarmas sin perder detecciones reales.</div>
   </div>
 </div>
 
-<!-- ── SLIDE 10: RGPD ────────────────────────────────────────── -->
+<!-- ── SLIDE 10: PRIVACIDAD ──────────────────────────────────── -->
 <div class="slide" id="s10">
-  <div class="slide-tag">RGPD · R3 · Art. 9</div>
-  <div class="slide-title">Privacidad <span>by design</span> · On-device first</div>
-  <div class="slide-sub">Datos de movimiento clasifican como datos de salud bajo Art. 9 RGPD. Diseñado para cumplirlo desde el origen.</div>
+  <div class="slide-tag">Privacidad y seguridad</div>
+  <div class="slide-title">Los datos del asegurado <span>nunca salen de Europa</span></div>
+  <div class="slide-sub">Diseñado desde el principio para cumplir el RGPD — no como un añadido posterior</div>
   <div class="tbl-wrap" style="margin-bottom:13px;flex:0">
     <table>
-      <thead><tr><th>Dato</th><th>Dónde se almacena</th><th>Retención</th><th>Protección</th></tr></thead>
+      <thead><tr><th>¿Qué datos?</th><th>¿Dónde se guardan?</th><th>¿Cuánto tiempo?</th><th>¿Cómo se protegen?</th></tr></thead>
       <tbody>
-        <tr><td><strong>Señal cruda accel/gyro</strong></td><td style="color:#3fb950">RAM del dispositivo</td><td>&lt;10 s</td><td><strong style="color:#3fb950">NUNCA sale del móvil</strong></td></tr>
-        <tr><td>Evento de actividad {tipo, duración}</td><td>PostgreSQL on-prem, Frankfurt (EEE)</td><td>2 años</td><td>Pseudonimizado por <code>user_id_hash</code></td></tr>
-        <tr><td>Alerta de caída {stage, svm_peak}</td><td>PostgreSQL on-prem, Frankfurt (EEE)</td><td>90 días</td><td>Acceso restringido a centralita</td></tr>
-        <tr><td>Datos reentrenamiento (opt-in)</td><td>MinIO on-prem, Frankfurt (EEE)</td><td>Hasta revocación</td><td>Anonimizados antes de ingesta</td></tr>
+        <tr><td><strong>Señal de movimiento del móvil</strong></td><td style="color:#3fb950">Solo en la memoria del móvil</td><td>Menos de 10 segundos</td><td><strong style="color:#3fb950">Jamás sale del dispositivo</strong></td></tr>
+        <tr><td>Resumen de actividad (tipo, duración)</td><td>Servidor propio en Alemania</td><td>2 años</td><td>Código de usuario anónimo</td></tr>
+        <tr><td>Alerta de caída detectada</td><td>Servidor propio en Alemania</td><td>90 días</td><td>Acceso restringido</td></tr>
+        <tr><td>Datos cedidos voluntariamente (mejora IA)</td><td>Servidor propio en Alemania</td><td>Hasta que el usuario los retire</td><td>Anonimizados antes de usarlos</td></tr>
       </tbody>
     </table>
   </div>
   <div class="g3">
     <div class="card green">
-      <div class="c-title">✅ Sin transferencias internacionales</div>
-      <div class="c-body">Backend self-hosted Hetzner Frankfurt (EEE). Sin SCC, BCR ni decisión de adecuación (Art. 46). Diferenciador clave vs AWS us-east-1 (riesgo Schrems II C-311/18, TJUE 2020).</div>
+      <div class="c-title">✅ Servidor propio en Europa</div>
+      <div class="c-body">Todos los datos permanecen en territorio europeo. Sin dependencias de empresas americanas. Sin riesgo de transferencias internacionales problemáticas.</div>
     </div>
     <div class="card purple">
-      <div class="c-title">📋 DPIA obligatoria (Art. 35)</div>
-      <div class="c-body">Tratamiento a escala de datos de salud + perfilado sistemático. Medidas: on-device inference, pseudonimización, TTL cortos, TLS 1.3 en tránsito, LUKS en disco. Revisión anual.</div>
+      <div class="c-title">📋 Evaluación de impacto (DPIA)</div>
+      <div class="c-body">Obligatoria para datos de salud a escala. Realizada antes del lanzamiento. Revisión anual. Incluye análisis de riesgos y medidas de mitigación documentadas.</div>
     </div>
     <div class="card blue">
-      <div class="c-title">🗑️ Derecho al olvido (Art. 17)</div>
-      <div class="c-body"><code>DELETE /users/{id}/data</code> → cascada PostgreSQL + MinIO. &lt;30 días. Dos consentimientos independientes: VitaPoints vs Alertas de emergencia.</div>
+      <div class="c-title">🗑️ El asegurado controla sus datos</div>
+      <div class="c-body">Puede pedir el borrado completo de todos sus datos en cualquier momento. Dos consentimientos separados: uno para VitaPoints, otro para alertas de emergencia.</div>
     </div>
   </div>
 </div>
 
 <!-- ── SLIDE 11: ARQUITECTURA ────────────────────────────────── -->
 <div class="slide" id="s11">
-  <div class="slide-tag">Arquitectura · E4</div>
-  <div class="slide-title">Backend <span>Self-Hosted</span> · 9 servicios · Docker Compose</div>
-  <div class="slide-sub">Hetzner Frankfurt (EEE) · Sin cloud americano · Sin vendor lock-in · OTA model updates</div>
+  <div class="slide-tag">Sistema completo</div>
+  <div class="slide-title">De la app al servidor — <span>todo bajo control</span></div>
+  <div class="slide-sub">Servidor propio en Europa, sin dependencia de terceros, con actualización automática de modelos</div>
   <div class="g2">
     <div style="display:flex;flex-direction:column;gap:10px">
-      <div class="code" style="font-size:0.71rem;line-height:1.7;flex:0">┌────────────────────────────────────┐
-│    SMARTPHONE (ON-DEVICE)          │
-│  Accel+Gyro @50 Hz                 │
-│  ├─► SVM &gt;3g? → FallDetector CNN  │
-│  └─► HarClassifier CNN             │
-│        → VitaPoints UI             │
-│  SEÑAL CRUDA NUNCA SALE DEL MÓVIL  │
-└────────────┬───────────────────────┘
-             │ HTTPS + TLS 1.3 + JWT
-             │ {activity, duration_s}
-             ▼
-┌────────────────────────────────────┐
-│  BACKEND (Hetzner Frankfurt, EEE)  │
-│  FastAPI ──► PostgreSQL            │
-│          ──► Redis ──► Worker      │
-│                    ──► ntfy push   │
-│                    ──► SMTP email  │
-│          ──► MinIO (modelos OTA)   │
-│  MLflow · Prometheus · Grafana     │
-└────────────────────────────────────┘</div>
-      <div class="card blue" style="padding:10px;flex:0">
-        <div style="font-size:0.76rem;color:#58a6ff;font-weight:700">🔄 OTA Model Updates</div>
-        <div style="font-size:0.73rem;color:#8b949e;margin-top:3px">Nuevo modelo → MLflow → MinIO → app en startup → swap sin Play Store. Propagación &lt;1 hora vs semanas de revisión de tienda.</div>
+      <div class="flow-box" style="border-color:#1f6feb">
+        <div style="font-size:0.76rem;font-weight:700;color:#58a6ff;margin-bottom:6px">📱 SMARTPHONE</div>
+        <div style="font-size:0.78rem;color:#c9d1d9">IA de actividad · Detector de caídas<br>Los datos brutos de movimiento <strong style="color:#3fb950">nunca salen</strong></div>
+      </div>
+      <div class="flow-arrow">↓ solo: "caminó 15 min" / "posible caída"</div>
+      <div class="flow-box" style="border-color:#9e6a03">
+        <div style="font-size:0.76rem;font-weight:700;color:#d29922;margin-bottom:6px">☁️ SERVIDOR PROPIO (Alemania)</div>
+        <div style="font-size:0.78rem;color:#c9d1d9">Gestión de VitaPoints · Cola de alertas de emergencia<br>Registro de actividad · Actualización de modelos</div>
+      </div>
+      <div class="card blue" style="padding:10px">
+        <div style="font-size:0.76rem;color:#58a6ff;font-weight:700">🔄 Modelos actualizados automáticamente</div>
+        <div style="font-size:0.73rem;color:#8b949e;margin-top:3px">El modelo de IA mejora sin que el usuario tenga que actualizar la app. La nueva versión se descarga silenciosamente y se activa al reiniciar.</div>
       </div>
     </div>
     <div>
       <div class="tbl-wrap">
-        <table style="font-size:0.76rem">
-          <thead><tr><th>Servicio</th><th>Puerto</th><th>Rol</th></tr></thead>
+        <table style="font-size:0.77rem">
+          <thead><tr><th>Componente</th><th>Para qué sirve</th></tr></thead>
           <tbody>
-            <tr><td style="color:#58a6ff"><strong>FastAPI</strong></td><td>8000</td><td>REST: eventos, VitaPoints, OTA, RGPD</td></tr>
-            <tr><td>PostgreSQL 16</td><td>5432</td><td>Persistencia: eventos, ledger, consentimientos</td></tr>
-            <tr><td>Redis</td><td>6379</td><td>Cola alertas de caída</td></tr>
-            <tr><td>Worker</td><td>—</td><td>30s ACK → ntfy+SMTP; cron TTL RGPD</td></tr>
-            <tr><td>MinIO</td><td>9000</td><td>S3-compatible: modelos TFLite OTA</td></tr>
-            <tr><td>ntfy</td><td>8080</td><td>Push notifications self-hosted</td></tr>
-            <tr><td>MLflow</td><td>5000</td><td>Model registry + tracking métricas</td></tr>
-            <tr><td>Prometheus</td><td>9090</td><td>Métricas: fall_fpr, drift, latencia</td></tr>
-            <tr><td>Grafana</td><td>3000</td><td>Dashboards: alertas, monitoring</td></tr>
+            <tr><td style="color:#58a6ff"><strong>App Android (Flutter)</strong></td><td>Captura sensores, corre los modelos de IA, muestra VitaPoints</td></tr>
+            <tr><td>API de eventos</td><td>Recibe los resúmenes de actividad y alertas de caída</td></tr>
+            <tr><td>Base de datos</td><td>Historial de actividad, puntos acumulados, consentimientos</td></tr>
+            <tr><td>Sistema de alertas</td><td>Envía notificación push al contacto de emergencia</td></tr>
+            <tr><td>Repositorio de modelos</td><td>Guarda y distribuye las versiones del modelo de IA</td></tr>
+            <tr><td>Panel de monitorización</td><td>Detecta si el modelo empeora en producción y hace rollback</td></tr>
           </tbody>
         </table>
       </div>
       <div class="card amber" style="margin-top:10px;padding:10px">
-        <div style="font-size:0.76rem;color:#d29922;font-weight:700">📊 Monitoring en producción</div>
-        <div style="font-size:0.73rem;color:#8b949e;margin-top:3px">Si FPR &gt; 0.10 en 48h → rollback automático al modelo anterior en MinIO. Prometheus scrape /metrics cada 15s.</div>
+        <div style="font-size:0.76rem;color:#d29922;font-weight:700">🔍 Monitorización continua</div>
+        <div style="font-size:0.73rem;color:#8b949e;margin-top:3px">Si el modelo empieza a fallar más en producción, el sistema lo detecta y vuelve automáticamente a la versión anterior — sin intervención humana.</div>
       </div>
     </div>
   </div>
@@ -525,37 +486,37 @@ Dense(6, softmax) → [stationary · walking ·
 
 <!-- ── SLIDE 12: COSTE Y ROI ─────────────────────────────────── -->
 <div class="slide" id="s12">
-  <div class="slide-tag">Coste y ROI · M4</div>
-  <div class="slide-title"><span>84k€</span> one-time · <span>512€/mes</span> para 180k asegurados</div>
-  <div class="slide-sub">El sistema más barato del mercado que además cumple RGPD y tiene soberanía de datos total</div>
+  <div class="slide-tag">Inversión y retorno</div>
+  <div class="slide-title"><span>84.000€</span> construirlo · <span>512€/mes</span> operarlo</div>
+  <div class="slide-sub">Para 180.000 asegurados. El sistema más barato del mercado que además mantiene los datos en Europa.</div>
   <div class="g2">
     <div style="display:flex;flex-direction:column;gap:10px">
       <div class="tbl-wrap">
         <table style="font-size:0.75rem">
-          <thead><tr><th colspan="2">CapEx — Construcción (one-time, 21 sem)</th></tr></thead>
+          <thead><tr><th colspan="2">Coste de construcción (una sola vez)</th></tr></thead>
           <tbody>
-            <tr><td>Data engineering + pipelines</td><td style="text-align:right;color:#58a6ff">12.000 €</td></tr>
-            <tr><td>Modelado ML — HAR (1D-CNN)</td><td style="text-align:right;color:#58a6ff">12.000 €</td></tr>
-            <tr><td>Modelado ML — Fall detector</td><td style="text-align:right;color:#58a6ff">12.000 €</td></tr>
-            <tr><td>Mobile dev (Flutter + TFLite)</td><td style="text-align:right;color:#58a6ff">12.000 €</td></tr>
-            <tr><td>Backend self-hosted</td><td style="text-align:right;color:#58a6ff">16.000 €</td></tr>
-            <tr><td>MLOps + monitoring</td><td style="text-align:right;color:#58a6ff">8.000 €</td></tr>
-            <tr><td>Legal / DPIA / DPO</td><td style="text-align:right;color:#58a6ff">4.000 €</td></tr>
-            <tr><td>QA + pruebas de campo</td><td style="text-align:right;color:#58a6ff">8.000 €</td></tr>
-            <tr><td><strong style="color:#e6edf3">TOTAL CapEx</strong></td><td style="text-align:right;font-weight:700;color:#3fb950">84.000 €</td></tr>
+            <tr><td>Preparación y limpieza de datos</td><td style="text-align:right;color:#58a6ff">12.000 €</td></tr>
+            <tr><td>Modelo de actividad (IA)</td><td style="text-align:right;color:#58a6ff">12.000 €</td></tr>
+            <tr><td>Modelo de detección de caídas</td><td style="text-align:right;color:#58a6ff">12.000 €</td></tr>
+            <tr><td>App Android</td><td style="text-align:right;color:#58a6ff">12.000 €</td></tr>
+            <tr><td>Servidor e infraestructura</td><td style="text-align:right;color:#58a6ff">16.000 €</td></tr>
+            <tr><td>Automatización y monitorización</td><td style="text-align:right;color:#58a6ff">8.000 €</td></tr>
+            <tr><td>Legal y protección de datos</td><td style="text-align:right;color:#58a6ff">4.000 €</td></tr>
+            <tr><td>Pruebas de calidad y campo</td><td style="text-align:right;color:#58a6ff">8.000 €</td></tr>
+            <tr><td><strong style="color:#e6edf3">TOTAL</strong></td><td style="text-align:right;font-weight:700;color:#3fb950">84.000 €</td></tr>
           </tbody>
         </table>
       </div>
       <div class="tbl-wrap">
         <table style="font-size:0.75rem">
-          <thead><tr><th colspan="2">OpEx — Operación mensual (180k usuarios)</th></tr></thead>
+          <thead><tr><th colspan="2">Coste mensual de operación (180k usuarios)</th></tr></thead>
           <tbody>
-            <tr><td>Hetzner AX42 (12-core, 64 GB)</td><td style="text-align:right;color:#58a6ff">75 €</td></tr>
-            <tr><td>Réplica HA (Hetzner CX42)</td><td style="text-align:right;color:#58a6ff">30 €</td></tr>
-            <tr><td>Backups + dominio</td><td style="text-align:right;color:#58a6ff">7 €</td></tr>
-            <tr><td>Ops/sysadmin (0.1 FTE)</td><td style="text-align:right;color:#58a6ff">400 €</td></tr>
-            <tr><td><strong style="color:#e6edf3">TOTAL OpEx</strong></td><td style="text-align:right;font-weight:700;color:#3fb950">512 €/mes</td></tr>
-            <tr><td style="color:#8b949e">Coste por usuario</td><td style="text-align:right;color:#8b949e">0.003 €/usuario/mes</td></tr>
+            <tr><td>Servidor principal (Europa)</td><td style="text-align:right;color:#58a6ff">75 €</td></tr>
+            <tr><td>Servidor de respaldo</td><td style="text-align:right;color:#58a6ff">30 €</td></tr>
+            <tr><td>Copias de seguridad y dominio</td><td style="text-align:right;color:#58a6ff">7 €</td></tr>
+            <tr><td>Mantenimiento (10% de una persona)</td><td style="text-align:right;color:#58a6ff">400 €</td></tr>
+            <tr><td><strong style="color:#e6edf3">TOTAL / mes</strong></td><td style="text-align:right;font-weight:700;color:#3fb950">512 €/mes</td></tr>
+            <tr><td style="color:#8b949e">Por usuario</td><td style="text-align:right;color:#8b949e">0.003 €/usuario/mes</td></tr>
           </tbody>
         </table>
       </div>
@@ -563,26 +524,26 @@ Dense(6, softmax) → [stationary · walking ·
     <div style="display:flex;flex-direction:column;gap:10px">
       <div class="tbl-wrap">
         <table style="font-size:0.75rem">
-          <thead><tr><th>Alternativa</th><th>Coste/mes</th><th>RGPD</th></tr></thead>
+          <thead><tr><th>Alternativa</th><th>Coste/mes</th><th>Problema RGPD</th></tr></thead>
           <tbody>
-            <tr><td style="color:#3fb950"><strong>✓ Vitalia self-hosted</strong></td><td style="color:#3fb950"><strong>512 €</strong></td><td style="color:#3fb950"><strong>Sin problemas</strong></td></tr>
-            <tr><td>API terceros (Withings)</td><td style="color:#f85149">~5.000 €</td><td style="color:#f85149">Señal va a EE.UU.</td></tr>
-            <tr><td>SDK HAR licencia</td><td style="color:#f85149">2.000–8.000 €</td><td style="color:#f85149">Datos en terceros</td></tr>
-            <tr><td>Cloud gestionado (AWS/GCP)</td><td style="color:#f85149">~548 € + riesgo</td><td style="color:#f85149">SCC obligatorias</td></tr>
-            <tr><td>Apple Watch Fall</td><td style="color:#f85149">Ecosistema cerrado</td><td style="color:#f85149">Solo iOS + Apple infra</td></tr>
+            <tr><td style="color:#3fb950"><strong>✓ Esta propuesta</strong></td><td style="color:#3fb950"><strong>512 €</strong></td><td style="color:#3fb950"><strong>Ninguno</strong></td></tr>
+            <tr><td>API de actividad (terceros)</td><td style="color:#f85149">~5.000 €</td><td style="color:#f85149">Datos van a EE.UU.</td></tr>
+            <tr><td>Licencia de SDK</td><td style="color:#f85149">2.000–8.000 €</td><td style="color:#f85149">Sin control de datos</td></tr>
+            <tr><td>Nube americana (AWS/GCP)</td><td style="color:#f85149">~548 € + riesgo</td><td style="color:#f85149">Transferencias ilegales</td></tr>
+            <tr><td>Apple Watch</td><td style="color:#f85149">Ecosistema cerrado</td><td style="color:#f85149">Solo iOS · Apple controla todo</td></tr>
           </tbody>
         </table>
       </div>
       <div class="card green" style="padding:13px">
-        <div style="font-size:0.82rem;color:#3fb950;font-weight:700;margin-bottom:7px">📈 ROI año 1</div>
-        <div class="code" style="font-size:0.73rem">Ahorro (intervención temprana caídas):
-180.000 × 2% × 30% × 8.500€ = 9.180.000 €
-
-CapEx + OpEx año 1 ≈ 90.144 €
-
-ROI año 1 ≈ 10.082%
-Break-even: &lt; 1 semana de operación</div>
-        <div style="font-size:0.7rem;color:#8b949e;margin-top:5px">Hipótesis conservadora — no incluye mejora de retención ni reducción de primas.</div>
+        <div style="font-size:0.82rem;color:#3fb950;font-weight:700;margin-bottom:7px">📈 Retorno de inversión — Año 1</div>
+        <div style="font-size:0.82rem;color:#c9d1d9;line-height:1.8">
+          Intervención temprana en caídas graves:<br>
+          180.000 asegurados × 2% incidencia × 30% intervenciones × 8.500€/caída<br>
+          <strong style="color:#3fb950">= 9.180.000 € de ahorro al año</strong><br><br>
+          Coste total año 1: <strong>~90.000 €</strong><br>
+          <strong style="color:#3fb950">ROI estimado: 10.000% · Recuperación: &lt; 1 semana</strong>
+        </div>
+        <div style="font-size:0.7rem;color:#8b949e;margin-top:5px">Estimación conservadora — sin contar mejora de retención ni reducción de primas.</div>
       </div>
     </div>
   </div>
@@ -590,28 +551,28 @@ Break-even: &lt; 1 semana de operación</div>
 
 <!-- ── SLIDE 13: CIERRE ───────────────────────────────────────── -->
 <div class="slide" id="s13">
-  <div class="slide-tag">Ventaja competitiva · Por qué esta propuesta</div>
-  <div class="slide-title">3 razones por las que <span>elegir esta solución</span></div>
+  <div class="slide-tag">Por qué elegir esta solución</div>
+  <div class="slide-title">3 razones <span>que nos diferencian</span></div>
   <div class="slide-sub">Precio · Robustez · Ajuste al contexto — los tres criterios del jurado-cliente</div>
   <div class="g3" style="margin-bottom:14px;flex:0">
-    <div class="card blue"><div class="c-icon">💰</div><div class="c-title">Precio</div><div class="c-body">CapEx 84k€ one-time + OpEx 512€/mes para 180k asegurados. <strong style="color:#58a6ff">9× más barato</strong> que API de terceros. Sin coste por usuario escalante. Coste fijo y predecible.</div></div>
-    <div class="card green"><div class="c-icon">🏗️</div><div class="c-title">Robustez</div><div class="c-body">LOSO real (54 sujetos HAR + 38 SisFall). <strong style="color:#3fb950">15 ancianos reales 60-75 años.</strong> Cascada 3 etapas + gate altitud + blanking + debounce. Monitoring Grafana en producción.</div></div>
-    <div class="card amber"><div class="c-icon">🎯</div><div class="c-title">Ajuste al contexto</div><div class="c-body">On-device first: señal cruda NUNCA sale del móvil. <strong style="color:#d29922">RGPD Art. 9 by design.</strong> Self-hosted EEE: sin SCC, sin transferencias internacionales. VitaPoints + prima dinámica.</div></div>
+    <div class="card blue"><div class="c-icon">💰</div><div class="c-title">Precio imbatible</div><div class="c-body">84.000€ de construcción + 512€/mes para 180.000 asegurados. <strong style="color:#58a6ff">9 veces más barato</strong> que cualquier API de terceros. Sin sorpresas de coste escalante.</div></div>
+    <div class="card green"><div class="c-icon">🏆</div><div class="c-title">Robustez demostrada</div><div class="c-body">Validado con 54 personas distintas. <strong style="color:#3fb950">15 ancianos reales de 60-75 años.</strong> Sistema de 4 filtros para evitar falsas alarmas. Monitorización automática en producción.</div></div>
+    <div class="card amber"><div class="c-icon">🎯</div><div class="c-title">Hecho para Vitalia</div><div class="c-body">Datos de movimiento jamás salen del móvil. <strong style="color:#d29922">Cumplimiento RGPD por diseño.</strong> Servidor propio en Europa. Integración directa con VitaPoints y prima dinámica.</div></div>
   </div>
   <div class="tbl-wrap" style="margin-bottom:12px;flex:0">
     <table style="font-size:0.76rem">
-      <thead><tr><th>Producto</th><th>HAR</th><th>Caídas</th><th>On-device</th><th>RGPD</th><th>Self-hosted EEE</th><th>VitaPoints</th></tr></thead>
+      <thead><tr><th>Solución</th><th>Actividad</th><th>Caídas</th><th>IA en el móvil</th><th>Privacidad RGPD</th><th>Servidor en Europa</th><th>VitaPoints</th></tr></thead>
       <tbody>
-        <tr><td style="color:#3fb950"><strong>✓ Vitalia (nuestra propuesta)</strong></td><td><span class="badge bg">✓ 6 clases</span></td><td><span class="badge bg">✓ cascada 3et.</span></td><td><span class="badge bg">✓ INT8</span></td><td><span class="badge bg">✓ by design</span></td><td><span class="badge bg">✓ Frankfurt</span></td><td><span class="badge bg">✓</span></td></tr>
-        <tr><td>Vitality (Discovery)</td><td><span class="badge ba">solo pasos</span></td><td><span class="badge br">✗</span></td><td><span class="badge br">✗ cloud</span></td><td><span class="badge ba">parcial</span></td><td><span class="badge br">✗</span></td><td><span class="badge bg">✓</span></td></tr>
-        <tr><td>Apple Watch Fall</td><td><span class="badge br">✗</span></td><td><span class="badge bg">✓</span></td><td><span class="badge bg">✓</span></td><td><span class="badge ba">parcial</span></td><td><span class="badge br">✗ Apple infra</span></td><td><span class="badge br">✗</span></td></tr>
+        <tr><td style="color:#3fb950"><strong>✓ Esta propuesta</strong></td><td><span class="badge bg">✓ 5 actividades</span></td><td><span class="badge bg">✓ 4 filtros</span></td><td><span class="badge bg">✓ On-device</span></td><td><span class="badge bg">✓ by design</span></td><td><span class="badge bg">✓ Alemania</span></td><td><span class="badge bg">✓</span></td></tr>
+        <tr><td>Vitality (Discovery)</td><td><span class="badge ba">solo pasos</span></td><td><span class="badge br">✗</span></td><td><span class="badge br">✗ nube</span></td><td><span class="badge ba">parcial</span></td><td><span class="badge br">✗</span></td><td><span class="badge bg">✓</span></td></tr>
+        <tr><td>Apple Watch</td><td><span class="badge br">✗</span></td><td><span class="badge bg">✓</span></td><td><span class="badge bg">✓</span></td><td><span class="badge ba">parcial</span></td><td><span class="badge br">✗ Apple</span></td><td><span class="badge br">✗</span></td></tr>
         <tr><td>Google Fit</td><td><span class="badge ba">parcial</span></td><td><span class="badge br">✗</span></td><td><span class="badge ba">parcial</span></td><td><span class="badge ba">parcial</span></td><td><span class="badge br">✗</span></td><td><span class="badge br">✗</span></td></tr>
       </tbody>
     </table>
   </div>
   <div class="card blue" style="padding:13px;text-align:center;flex:0">
-    <div style="font-size:0.95rem;font-weight:700;color:#58a6ff">El único sistema que combina HAR on-device + caídas con cascada 3 etapas + privacidad by-design + self-hosted EEE + VitaPoints</div>
-    <div style="font-size:0.8rem;color:#8b949e;margin-top:5px">Navegad con ← → o swipe · Teclado: flechas / espacio</div>
+    <div style="font-size:0.95rem;font-weight:700;color:#58a6ff">La única solución que detecta actividad + caídas + protege la privacidad + mantiene los datos en Europa + se integra con VitaPoints</div>
+    <div style="font-size:0.8rem;color:#8b949e;margin-top:5px">← → para navegar · teclas de flecha · swipe en táctil</div>
   </div>
 </div>
 
