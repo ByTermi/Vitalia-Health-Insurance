@@ -3,6 +3,7 @@ import 'dart:math' show sin, pi;
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../sensors/sensor_service.dart';
+import '../sensors/altitude_service.dart';
 import '../inference/har_classifier.dart';
 import '../inference/fall_detector.dart';
 import '../storage/database_service.dart';
@@ -14,6 +15,14 @@ import '../services/notification_state.dart';
 import '../inference/har_test_samples.dart';
 import 'settings_screen.dart';
 
+// ── Paleta (clara, moderna) — blancos + acento azul marino ──
+const kBg = Color(0xFFEFF2F6);       // fondo scaffold / insets
+const kSurface = Color(0xFFFFFFFF);  // tarjetas, appbar, navbar
+const kInk = Color(0xFF1F2533);      // texto/iconos primarios
+const kAccent = Color(0xFF03045E);   // acento principal (azul marino)
+const kAccentBg = Color(0xFFECEDF8); // tinte suave del acento
+const kDangerBg = Color(0xFFFDECEC); // tinte suave de peligro
+
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -22,18 +31,19 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
-  // â”€â”€ Models & sensors â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Models & sensors ──────────────────────────────────────────────
   final _sensorService = SensorService();
   final _harBuffer = SlidingWindowBuffer(
       windowSize: 128, overlap: 0.5, rowMapper: (s) => s.toListLinear());
   final _fallBuffer = SlidingWindowBuffer(windowSize: 100, overlap: 0.5);
   final _harClassifier = HarClassifier();
   final _fallDetector = FallDetector(mode: DetectionMode.balanced);
+  final _altitudeService = AltitudeService();
 
   StreamSubscription? _sensorSub;
   Timer? _pointsTimer;
 
-  // â”€â”€ UI state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── UI state ──────────────────────────────────────────────────────
   HarResult? _lastHar;
   FallResult? _lastFall;
   double _svmG = 0.0;
@@ -47,25 +57,25 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   SensorSample? _lastSample;
   int _tab = 0;
 
-  // â”€â”€ Backend â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Backend ───────────────────────────────────────────────────────
   final _api = ApiService.instance;
   final _ntfy = NtfyService();
   StreamSubscription? _ntfySub;
   bool _backendConnected = false;
   String? _pendingFallId;
 
-  // â”€â”€ Background service â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Background service ────────────────────────────────────────────
   StreamSubscription? _bgFallSub;
   StreamSubscription? _notifTapSub;
 
-  // â”€â”€ Tests tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Tests tab ────────────────────────────────────────────────────
   final List<_TestResult> _testResults = [];
   bool _testRunning = false;
   bool _cancelRequested = false;
 
-  // â”€â”€ Chart & DB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Chart & DB ────────────────────────────────────────────────────
   static const int _chartLen = 250; // 5 s @ 50 Hz
-  static const int _dbDecimate = 10; // store 1 of every 10 samples â†’ 5 Hz
+  static const int _dbDecimate = 10; // store 1 of every 10 samples → 5 Hz
   final List<double> _axBuf = [], _ayBuf = [], _azBuf = [];
   int _sampleCount = 0;
   int _dbReadingCount = 0;
@@ -83,9 +93,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     switch (state) {
       case AppLifecycleState.paused:
       case AppLifecycleState.detached:
-        // App going to background â€” hand off to background service.
+        // App going to background — hand off to background service.
         _sensorSub?.cancel();
         _sensorService.stop();
+        _altitudeService.stop();
         FallBackgroundService.start();
         _bgFallSub = FallBackgroundService.fallEvents.listen((data) {
           if (data == null) return;
@@ -99,7 +110,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         });
         break;
       case AppLifecycleState.resumed:
-        // App back to foreground â€” stop background service, resume sensors.
+        // App back to foreground — stop background service, resume sensors.
         _bgFallSub?.cancel();
         FallBackgroundService.stop();
         if (mounted) {
@@ -114,6 +125,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   Future<void> _init() async {
     await _db.init();
+    await _applySavedThresholds();
     final lastProfile = await _db.getLastUsedProfile();
     if (lastProfile != null) {
       _api.ip = lastProfile.ip;
@@ -148,6 +160,19 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     _startSensors();
     _subscribeNtfy();
     _handleNotificationLaunch();
+  }
+
+  // Load user-tuned thresholds from SQLite; fall back to defaults when a key is absent.
+  Future<void> _applySavedThresholds() async {
+    final s = await _db.getAllSettings();
+    for (final m in DetectionMode.values) {
+      _fallDetector.setCnnThreshold(
+          m, s['cnn_${m.name}'] ?? defaultThresholds[m]!);
+    }
+    _fallDetector.svmThreshold =
+        s['svm_threshold'] ?? FallDetector.defaultSvmThreshold;
+    _harClassifier.setStairsThresholdMagnitude(
+        s['stairs_alt'] ?? HarClassifier.defaultStairsUpM);
   }
 
   void _handleNotificationLaunch() {
@@ -209,18 +234,19 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   void _startSensors() {
     _sensorService.start();
+    _altitudeService.start();
     _sensorSub = _sensorService.sampleStream.listen(_onSample);
 
     _pointsTimer = Timer.periodic(const Duration(minutes: 1), (_) {
       final activity = _lastHar?.activity;
       if (activity != null && activity.isActive) {
         setState(() {
-          // Optimistic local increment â€” overwritten by backend response when online
+          // Optimistic local increment — overwritten by backend response when online
           _vitaPoints += activity.vitaPointsPerMin;
           _activeMinutes++;
           _activityMinutes[activity] = (_activityMinutes[activity] ?? 0) + 1;
         });
-        // Send activity event to backend â€” use response as source of truth
+        // Send activity event to backend — use response as source of truth
         _api.postActivity(
           activity: activity.name,
           durationSeconds: 60,
@@ -251,7 +277,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       _azBuf.removeAt(0);
     }
 
-    // SQLite â€” store every _dbDecimate-th sample
+    // SQLite — store every _dbDecimate-th sample
     if (_sampleCount % _dbDecimate == 0) {
       _db.insertReading(SensorReading(
         ts: DateTime.now().millisecondsSinceEpoch,
@@ -266,10 +292,15 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     }
 
     setState(() => _lastSample = sample);
+    // Feed altitude service (barometer + accel fallback) for the stairs gate.
+    _altitudeService.addSample(sample);
     // HAR inference
     final harWindow = _harBuffer.addSample(sample);
     if (harWindow != null && _harClassifier.isLoaded) {
-      final result = _harClassifier.classify(harWindow);
+      final result = _harClassifier.classify(
+        harWindow,
+        altitudeDeltaM: _altitudeService.altitudeDeltaOverLastSamples(128),
+      );
       if (result != null) setState(() => _lastHar = result);
     }
 
@@ -349,7 +380,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             onPressed: () {
               Navigator.of(ctx).pop();
               setState(() => _inFallAlert = false);
-              // No ACK â†’ backend worker will send ntfy+email alert
+              // No ACK → backend worker will send ntfy+email alert
             },
             child: const Text('Llamar a emergencias'),
           ),
@@ -373,6 +404,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _sensorSub?.cancel();
     _sensorService.dispose();
+    _altitudeService.stop();
     _harClassifier.dispose();
     _fallDetector.dispose();
     _pointsTimer?.cancel();
@@ -386,10 +418,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0A1628),
+      backgroundColor: kBg,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0D1F35),
-        title: const Text('Vitalia', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        backgroundColor: kSurface,
+        title: const Text('Vitalia', style: TextStyle(color: kInk, fontWeight: FontWeight.bold)),
         centerTitle: true,
         actions: [
           if (!_modelsLoaded)
@@ -398,18 +430,18 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               child: SizedBox(
                   width: 18,
                   height: 18,
-                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)),
+                  child: CircularProgressIndicator(color: kInk, strokeWidth: 2)),
             ),
           Padding(
             padding: const EdgeInsets.only(right: 4),
             child: Icon(
               _backendConnected ? Icons.cloud_done_outlined : Icons.cloud_off_outlined,
-              color: _backendConnected ? Colors.greenAccent : Colors.white38,
+              color: _backendConnected ? kAccent : kInk.withOpacity(0.38),
               size: 20,
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.settings_outlined, color: Colors.white54),
+            icon: Icon(Icons.settings_outlined, color: kInk.withOpacity(0.54)),
             tooltip: 'Ajustes',
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const SettingsScreen()),
@@ -425,9 +457,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _tab,
         onTap: (i) => setState(() => _tab = i),
-        backgroundColor: const Color(0xFF0D1F35),
-        selectedItemColor: Colors.greenAccent,
-        unselectedItemColor: Colors.white38,
+        backgroundColor: kSurface,
+        selectedItemColor: kAccent,
+        unselectedItemColor: kInk.withOpacity(0.38),
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.directions_walk), label: 'Actividad'),
           BottomNavigationBarItem(icon: Icon(Icons.analytics_outlined), label: 'Métricas'),
@@ -437,9 +469,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     );
   }
 
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  // TAB 1 â€” ACTIVIDAD
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ────────────────────────────────────────────────────────────────
+  // TAB 1 — ACTIVIDAD
+  // ────────────────────────────────────────────────────────────────
 
   Widget _buildActivityTab() {
     return SingleChildScrollView(
@@ -466,7 +498,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       Activity.stationary: Icons.chair_outlined,
       Activity.walking: Icons.directions_walk,
       Activity.running: Icons.directions_run,
-      Activity.cycling: Icons.pedal_bike,
       Activity.upstairs: Icons.north,
       Activity.downstairs: Icons.south,
     };
@@ -477,20 +508,20 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           Icon(
             activity != null ? (icons[activity] ?? Icons.device_unknown) : Icons.sensors,
             size: 72,
-            color: Colors.greenAccent,
+            color: kAccent,
           ),
           const SizedBox(height: 10),
           Text(
             !_modelsLoaded
-                ? 'Cargando modeloâ€¦'
-                : (activity?.displayName ?? 'Detectandoâ€¦'),
-            style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold),
+                ? 'Cargando modelo…'
+                : (activity?.displayName ?? 'Detectando…'),
+            style: const TextStyle(color: kInk, fontSize: 26, fontWeight: FontWeight.bold),
           ),
           if (_lastHar != null) ...[
             const SizedBox(height: 6),
             Text(
               'Confianza: ${(_lastHar!.confidence * 100).toStringAsFixed(1)}%',
-              style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 14),
+              style: TextStyle(color: kInk.withOpacity(0.55), fontSize: 14),
             ),
             const SizedBox(height: 4),
             Text(
@@ -498,10 +529,22 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               style: TextStyle(
                   color: (activity?.vitaPointsPerMin ?? 0) > 0
                       ? Colors.amber
-                      : Colors.white38,
+                      : kInk.withOpacity(0.38),
                   fontSize: 13),
             ),
           ],
+          const SizedBox(height: 8),
+          // Debug del gate de escaleras: sensor de altitud, Δh instantáneo y trend (media).
+          // El gate decide con 'trend' (down si <-0.7, up si >+0.7).
+          Text(
+            'alt: ${_altitudeService.hasBarometer ? "barometer" : "accel fallback"}  '
+            'Δh: ${_altitudeService.altitudeDeltaOverLastSamples(128).toStringAsFixed(2)}  '
+            'trend: ${_harClassifier.altitudeTrend.toStringAsFixed(2)} m',
+            style: TextStyle(
+                color: kInk.withOpacity(0.5),
+                fontSize: 11,
+                fontFamily: 'monospace'),
+          ),
         ],
       ),
     );
@@ -520,10 +563,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _stat('VitaPoints', _vitaPoints.toStringAsFixed(1), Icons.star_rounded, Colors.amber),
-              Container(width: 1, height: 50, color: Colors.white12),
+              Container(width: 1, height: 50, color: kInk.withOpacity(0.10)),
               _stat('Racha', '${_streakDays}d', Icons.local_fire_department, Colors.orangeAccent),
-              Container(width: 1, height: 50, color: Colors.white12),
-              _stat('Min activos', '$_activeMinutes', Icons.timer_outlined, Colors.greenAccent),
+              Container(width: 1, height: 50, color: kInk.withOpacity(0.10)),
+              _stat('Min activos', '$_activeMinutes', Icons.timer_outlined, kAccent),
             ],
           ),
           const SizedBox(height: 10),
@@ -547,7 +590,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               Text(
                 _backendConnected ? 'sincronizado' : 'local',
                 style: TextStyle(
-                    color: _backendConnected ? Colors.greenAccent : Colors.white38,
+                    color: _backendConnected ? kAccent : kInk.withOpacity(0.38),
                     fontSize: 11),
               ),
             ],
@@ -560,43 +603,54 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
 
   Widget _fallStatusCard() {
-    final stage1Active = _svmG > FallDetector.svmThreshold;
+    final stage1Active = _svmG > _fallDetector.svmThreshold;
     final color = _inFallAlert
         ? Colors.red.shade700
-        : (stage1Active ? Colors.orange.shade800 : const Color(0xFF1A2D4A));
+        : (stage1Active ? Colors.orange.shade800 : kSurface);
+    // White text on the coloured alert/impact states; ink on the white idle card.
+    final onColor = (_inFallAlert || stage1Active) ? Colors.white : kInk;
 
-    return _card(
-      color: color,
-      child: Row(
-        children: [
-          Icon(
-            _inFallAlert
-                ? Icons.warning_amber_rounded
-                : (stage1Active ? Icons.sensors : Icons.shield_outlined),
-            color: _inFallAlert ? Colors.amber : (stage1Active ? Colors.orange : Colors.greenAccent),
-            size: 36,
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _inFallAlert
-                      ? '¡Caída detectada!'
-                      : (stage1Active ? 'Impacto â€” analizando CNNâ€¦' : 'Monitor activo'),
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
-                ),
-                Text(
-                  'SVM: ${_svmG.toStringAsFixed(2)} g  |  '
-                  'Umbral: ${FallDetector.svmThreshold.toStringAsFixed(1)} g  |  '
-                  'Modo: ${_fallDetector.mode.name}',
-                  style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 12),
-                ),
-              ],
+    // Fixed height so the block does not jump when the title text or mode changes.
+    return SizedBox(
+      height: 86,
+      child: _card(
+        color: color,
+        child: Row(
+          children: [
+            Icon(
+              _inFallAlert
+                  ? Icons.warning_amber_rounded
+                  : (stage1Active ? Icons.sensors : Icons.shield_outlined),
+              color: _inFallAlert
+                  ? Colors.white
+                  : (stage1Active ? Colors.white : kAccent),
+              size: 36,
             ),
-          ),
-        ],
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _inFallAlert
+                        ? '¡Caída detectada!'
+                        : (stage1Active ? 'Impacto — analizando CNN…' : 'Monitor activo'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: onColor, fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                  Text(
+                    'Modo: ${_fallDetector.mode.name}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: onColor.withOpacity(0.65), fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -607,25 +661,96 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Modo detección caídas',
-              style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 12)),
+              style: TextStyle(color: kInk.withOpacity(0.55), fontSize: 12)),
           const SizedBox(height: 10),
-          SegmentedButton<DetectionMode>(
-            style: SegmentedButton.styleFrom(
-              backgroundColor: const Color(0xFF0A1628),
-              selectedBackgroundColor: Colors.greenAccent.withOpacity(0.2),
-              foregroundColor: Colors.white38,
-              selectedForegroundColor: Colors.greenAccent,
+          SizedBox(
+            width: double.infinity,
+            child: SegmentedButton<DetectionMode>(
+              showSelectedIcon: false, // checkmark widened segments → overflow
+              style: SegmentedButton.styleFrom(
+                backgroundColor: kBg,
+                selectedBackgroundColor: kAccent.withOpacity(0.2),
+                foregroundColor: kInk.withOpacity(0.38),
+                selectedForegroundColor: kAccent,
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              segments: const [
+                ButtonSegment(value: DetectionMode.conservative, label: Text('65+', style: TextStyle(fontSize: 12))),
+                ButtonSegment(value: DetectionMode.balanced, label: Text('Estándar', style: TextStyle(fontSize: 12))),
+                ButtonSegment(value: DetectionMode.strict, label: Text('Estricto', style: TextStyle(fontSize: 12))),
+              ],
+              selected: {_fallDetector.mode},
+              onSelectionChanged: (s) => setState(() => _fallDetector.mode = s.first),
             ),
-            segments: const [
-              ButtonSegment(value: DetectionMode.conservative, label: Text('65+', style: TextStyle(fontSize: 12))),
-              ButtonSegment(value: DetectionMode.balanced, label: Text('Estándar', style: TextStyle(fontSize: 12))),
-              ButtonSegment(value: DetectionMode.strict, label: Text('Estricto', style: TextStyle(fontSize: 12))),
-            ],
-            selected: {_fallDetector.mode},
-            onSelectionChanged: (s) => setState(() => _fallDetector.mode = s.first),
+          ),
+          const SizedBox(height: 12),
+          _thresholdSlider(
+            label: 'Umbral CNN (${_fallDetector.mode.name})',
+            value: _fallDetector.threshold,
+            min: 0.30,
+            max: 0.95,
+            suffix: _fallDetector.threshold.toStringAsFixed(2),
+            onChanged: (v) {
+              setState(() => _fallDetector.setCnnThreshold(_fallDetector.mode, v));
+              _db.setSetting('cnn_${_fallDetector.mode.name}', v);
+            },
+          ),
+          _thresholdSlider(
+            label: 'Impacto SVM',
+            value: _fallDetector.svmThreshold,
+            min: 2.0,
+            max: 5.0,
+            suffix: '${_fallDetector.svmThreshold.toStringAsFixed(1)} g',
+            onChanged: (v) {
+              setState(() => _fallDetector.svmThreshold = v);
+              _db.setSetting('svm_threshold', v);
+            },
+          ),
+          _thresholdSlider(
+            label: 'Umbral escaleras (altitud)',
+            value: _harClassifier.stairsConfirmUpM,
+            min: 0.30,
+            max: 2.0,
+            suffix: '${_harClassifier.stairsConfirmUpM.toStringAsFixed(2)} m',
+            onChanged: (v) {
+              setState(() => _harClassifier.setStairsThresholdMagnitude(v));
+              _db.setSetting('stairs_alt', v);
+            },
           ),
         ],
       ),
+    );
+  }
+
+  Widget _thresholdSlider({
+    required String label,
+    required double value,
+    required double min,
+    required double max,
+    required String suffix,
+    required ValueChanged<double> onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label,
+                style: TextStyle(color: kInk.withOpacity(0.7), fontSize: 12)),
+            Text(suffix,
+                style: const TextStyle(color: kAccent, fontSize: 12)),
+          ],
+        ),
+        Slider(
+          value: value.clamp(min, max),
+          min: min,
+          max: max,
+          activeColor: kAccent,
+          onChanged: onChanged,
+        ),
+      ],
     );
   }
 
@@ -640,30 +765,30 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     final hasData = _axBuf.length > 2;
 
     return _card(
-      color: const Color(0xFF0D1F35),
+      color: kSurface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // â”€â”€ Header row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          // ── Header row ──────────────────────────────────────────
           Row(
             children: [
-              Text('Acelerómetro â€” últimos 5 s',
+              Text('Acelerómetro — últimos 5 s',
                   style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.45),
+                      color: kInk.withValues(alpha: 0.45),
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0.8)),
               const Spacer(),
               _legend('X', Colors.redAccent),
               const SizedBox(width: 8),
-              _legend('Y', Colors.greenAccent),
+              _legend('Y', kAccent),
               const SizedBox(width: 8),
-              _legend('Z', Colors.lightBlueAccent),
+              _legend('Z', const Color(0xFF2563EB)),
             ],
           ),
           const SizedBox(height: 10),
 
-          // â”€â”€ Line chart â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          // ── Line chart ──────────────────────────────────────────
           SizedBox(
             height: 120,
             child: hasData
@@ -676,7 +801,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                         show: true,
                         horizontalInterval: 1,
                         getDrawingHorizontalLine: (_) => FlLine(
-                            color: Colors.white10, strokeWidth: 0.5),
+                            color: kInk.withOpacity(0.08), strokeWidth: 0.5),
                         drawVerticalLine: false,
                       ),
                       borderData: FlBorderData(show: false),
@@ -689,7 +814,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                             getTitlesWidget: (v, _) => Text(
                               v.toInt().toString(),
                               style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.3),
+                                  color: kInk.withValues(alpha: 0.3),
                                   fontSize: 9),
                             ),
                           ),
@@ -703,19 +828,19 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                       ),
                       lineBarsData: [
                         _chartLine(toSpots(_axBuf), Colors.redAccent),
-                        _chartLine(toSpots(_ayBuf), Colors.greenAccent),
-                        _chartLine(toSpots(_azBuf), Colors.lightBlueAccent),
+                        _chartLine(toSpots(_ayBuf), kAccent),
+                        _chartLine(toSpots(_azBuf), const Color(0xFF2563EB)),
                       ],
                     ),
                     duration: Duration.zero,
                   )
-                : const Center(
-                    child: Text('Esperando datosâ€¦',
-                        style: TextStyle(color: Colors.white24))),
+                : Center(
+                    child: Text('Esperando datos…',
+                        style: TextStyle(color: kInk.withOpacity(0.24)))),
           ),
           const SizedBox(height: 12),
 
-          // â”€â”€ Numeric values â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          // ── Numeric values ───────────────────────────────────────
           Row(
             children: [
               Expanded(
@@ -724,17 +849,17 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                   children: [
                     Text('ACELERÓMETRO (g)',
                         style: TextStyle(
-                            color: Colors.greenAccent.withValues(alpha: 0.6),
+                            color: kAccent.withValues(alpha: 0.6),
                             fontSize: 10,
                             letterSpacing: 0.5)),
                     const SizedBox(height: 3),
-                    _sensorRow('X', s != null ? fmt(s.ax) : 'â€”', Colors.redAccent),
-                    _sensorRow('Y', s != null ? fmt(s.ay) : 'â€”', Colors.greenAccent),
-                    _sensorRow('Z', s != null ? fmt(s.az) : 'â€”', Colors.lightBlueAccent),
+                    _sensorRow('X', s != null ? fmt(s.ax) : '—', Colors.redAccent),
+                    _sensorRow('Y', s != null ? fmt(s.ay) : '—', kAccent),
+                    _sensorRow('Z', s != null ? fmt(s.az) : '—', const Color(0xFF2563EB)),
                   ],
                 ),
               ),
-              Container(width: 1, height: 65, color: Colors.white10),
+              Container(width: 1, height: 65, color: kInk.withOpacity(0.08)),
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.only(left: 14),
@@ -747,9 +872,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                               fontSize: 10,
                               letterSpacing: 0.5)),
                       const SizedBox(height: 3),
-                      _sensorRow('X', s != null ? fmt(s.gx) : 'â€”', Colors.redAccent),
-                      _sensorRow('Y', s != null ? fmt(s.gy) : 'â€”', Colors.greenAccent),
-                      _sensorRow('Z', s != null ? fmt(s.gz) : 'â€”', Colors.lightBlueAccent),
+                      _sensorRow('X', s != null ? fmt(s.gx) : '—', Colors.redAccent),
+                      _sensorRow('Y', s != null ? fmt(s.gy) : '—', kAccent),
+                      _sensorRow('Z', s != null ? fmt(s.gz) : '—', const Color(0xFF2563EB)),
                     ],
                   ),
                 ),
@@ -761,14 +886,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             children: [
               Text('SVM: ',
                   style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.45), fontSize: 12)),
-              Text(s != null ? '${s.svmG.toStringAsFixed(3)} g' : 'â€”',
+                      color: kInk.withValues(alpha: 0.45), fontSize: 12)),
+              Text(s != null ? '${s.svmG.toStringAsFixed(3)} g' : '—',
                   style: const TextStyle(
-                      color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                      color: kInk, fontSize: 12, fontWeight: FontWeight.bold)),
               const Spacer(),
               Text('$_dbReadingCount lecturas en DB',
                   style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.3), fontSize: 10)),
+                      color: kInk.withValues(alpha: 0.3), fontSize: 10)),
             ],
           ),
         ],
@@ -806,14 +931,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             const SizedBox(width: 6),
             Text(value,
                 style: const TextStyle(
-                    color: Colors.white, fontSize: 13, fontFamily: 'monospace')),
+                    color: kInk, fontSize: 13, fontFamily: 'monospace')),
           ],
         ),
       );
 
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  // TAB 2 â€” MÉTRICAS
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ────────────────────────────────────────────────────────────────
+  // TAB 2 — MÉTRICAS
+  // ────────────────────────────────────────────────────────────────
 
   Widget _buildMetricsTab() {
     return SingleChildScrollView(
@@ -821,19 +946,19 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _sectionTitle('Modelo HAR â€” Reconocimiento de Actividad'),
+          _sectionTitle('Modelo HAR — Reconocimiento de Actividad'),
           _harModelCard(),
           const SizedBox(height: 14),
           _sectionTitle('VitaPoints por Actividad'),
           _vitaPointsBreakdownCard(),
           const SizedBox(height: 14),
-          _sectionTitle('Detector de Caídas â€” Cascada 3 Etapas'),
+          _sectionTitle('Detector de Caídas — Cascada 3 Etapas'),
           _fallModelCard(),
           const SizedBox(height: 14),
           _sectionTitle('Modos de Detección'),
           _modesExplanationCard(),
           const SizedBox(height: 14),
-          _sectionTitle('Sesión â€” Actividad desglosada'),
+          _sectionTitle('Sesión — Actividad desglosada'),
           _sessionBreakdownCard(),
           const SizedBox(height: 14),
           _sectionTitle('Estado en tiempo real'),
@@ -848,18 +973,18 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _metricRow('Tipo', 'CNN 1D â€” 6 clases de actividad'),
+          _metricRow('Tipo', 'CNN 1D — 6 clases de actividad'),
           _metricRow('Entrada', '128 muestras × 6 canales @50 Hz (2.56 s)'),
           _metricRow('Canales', 'ax, ay, az (g) + gx, gy, gz (rad/s)'),
           _metricRow('Baseline RF', 'Recall 0.931 | AUC 0.986 (LOSO)'),
-          _metricRow('Modelo', _harClassifier.isLoaded ? 'Cargado âœ“' : 'No disponible'),
+          _metricRow('Modelo', _harClassifier.isLoaded ? 'Cargado ✓' : 'No disponible'),
           _metricRow('Tamaño', 'har_model_int8.tflite (<500 KB)'),
           const SizedBox(height: 8),
           Text(
             'El modelo CNN clasifica cada ventana de 2.56 s de señal bruta del '
             'acelerómetro y giroscopio directamente, sin calcular features manuales. '
-            'La cuantización INT8 lo hace ejecutable en 20â€“30 ms en cualquier smartphone.',
-            style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 12, height: 1.5),
+            'La cuantización INT8 lo hace ejecutable en 20–30 ms en cualquier smartphone.',
+            style: TextStyle(color: kInk.withOpacity(0.55), fontSize: 12, height: 1.5),
           ),
         ],
       ),
@@ -873,10 +998,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         children: activities.map((a) {
           final pts = a.vitaPointsPerMin;
           final color = pts >= 4
-              ? Colors.greenAccent
+              ? kAccent
               : pts >= 2
-                  ? Colors.lightGreenAccent
-                  : Colors.white24;
+                  ? kAccent
+                  : kInk.withOpacity(0.24);
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 5),
             child: Row(
@@ -884,12 +1009,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 SizedBox(
                   width: 110,
                   child: Text(a.displayName,
-                      style: const TextStyle(color: Colors.white, fontSize: 14)),
+                      style: const TextStyle(color: kInk, fontSize: 14)),
                 ),
                 Expanded(
                   child: LinearProgressIndicator(
                     value: pts / 5.0,
-                    backgroundColor: Colors.white12,
+                    backgroundColor: kInk.withOpacity(0.10),
                     color: color,
                     minHeight: 8,
                     borderRadius: BorderRadius.circular(4),
@@ -912,9 +1037,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         stage: '1',
         name: 'Umbral SVM (always-on)',
         desc: 'Comprueba si el pico del vector de magnitud de aceleración supera '
-            '${FallDetector.svmThreshold.toStringAsFixed(1)} g. '
+            '${_fallDetector.svmThreshold.toStringAsFixed(1)} g. '
             'Coste energético mínimo (<1 mW extra). Si se supera, activa la etapa 2.',
-        active: _svmG > FallDetector.svmThreshold,
+        active: _svmG > _fallDetector.svmThreshold,
         value: 'SVM: ${_svmG.toStringAsFixed(2)} g',
       ),
       _FallStageInfo(
@@ -949,15 +1074,15 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               _metricRow('Recall (modo conservador)', '~100%  (threshold 0.30)'),
               _metricRow('Recall (equilibrado)', '99.7%  (threshold 0.50)'),
               _metricRow('Precisión (estricto)', '>90%  (threshold 0.70)'),
-              _metricRow('Tamaño', '${FallDetector.windowSize} muestras â†’ 21.6 KB INT8'),
-              _metricRow('Modelo', _fallDetector.isLoaded ? 'Cargado âœ“' : 'No disponible'),
+              _metricRow('Tamaño', '${FallDetector.windowSize} muestras → 21.6 KB INT8'),
+              _metricRow('Modelo', _fallDetector.isLoaded ? 'Cargado ✓' : 'No disponible'),
               const SizedBox(height: 8),
               Text(
                 'Por qué como sub-problema binario: las caídas son eventos transitorios con '
                 'señal muy diferente al resto. Entrenar un clasificador dedicado permite '
                 'optimizar el recall de forma independiente y usar ventanas centradas en el '
                 'impacto en lugar de ventanas deslizantes.',
-                style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 12, height: 1.5),
+                style: TextStyle(color: kInk.withOpacity(0.55), fontSize: 12, height: 1.5),
               ),
             ],
           ),
@@ -966,7 +1091,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         ...stages.map((s) => Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: _card(
-                color: s.active ? const Color(0xFF1B3A2A) : const Color(0xFF1A2D4A),
+                color: s.active ? kAccentBg : kSurface,
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -976,11 +1101,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: s.active ? Colors.greenAccent : Colors.white12,
+                        color: s.active ? kAccent : kInk.withOpacity(0.10),
                       ),
                       child: Text(s.stage,
                           style: TextStyle(
-                              color: s.active ? Colors.black : Colors.white38,
+                              color: s.active ? Colors.white : kInk.withOpacity(0.38),
                               fontWeight: FontWeight.bold,
                               fontSize: 13)),
                     ),
@@ -994,18 +1119,18 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                               Expanded(
                                 child: Text(s.name,
                                     style: const TextStyle(
-                                        color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                                        color: kInk, fontWeight: FontWeight.bold, fontSize: 14)),
                               ),
                               Text(s.value,
                                   style: TextStyle(
-                                      color: s.active ? Colors.greenAccent : Colors.white38,
+                                      color: s.active ? kAccent : kInk.withOpacity(0.38),
                                       fontSize: 12)),
                             ],
                           ),
                           const SizedBox(height: 4),
                           Text(s.desc,
                               style: TextStyle(
-                                  color: Colors.white.withOpacity(0.5), fontSize: 12, height: 1.4)),
+                                  color: kInk.withOpacity(0.5), fontSize: 12, height: 1.4)),
                         ],
                       ),
                     ),
@@ -1037,8 +1162,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         recall: '99.7%',
         precision: '98.7%',
         desc: 'Maximiza el F1-score. Balance óptimo entre recall y precisión. '
-            'Recomendado para la mayoría de asegurados (45â€“64 años).',
-        color: Colors.greenAccent,
+            'Recomendado para la mayoría de asegurados (45–64 años).',
+        color: kAccent,
       ),
       (
         mode: DetectionMode.strict,
@@ -1048,7 +1173,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         precision: '>95%',
         desc: 'Minimiza las falsas alarmas. Para usuarios activos donde los FP '
             'generan desconfianza en el sistema y riesgo de desinstalación.',
-        color: Colors.lightBlueAccent,
+        color: const Color(0xFF2563EB),
       ),
     ];
 
@@ -1058,7 +1183,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         return Padding(
           padding: const EdgeInsets.only(bottom: 8),
           child: _card(
-            color: isActive ? const Color(0xFF0D2D1A) : const Color(0xFF1A2D4A),
+            color: isActive ? kAccentBg : kSurface,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1080,16 +1205,16 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                            color: Colors.greenAccent.withOpacity(0.15),
+                            color: kAccent.withOpacity(0.15),
                             borderRadius: BorderRadius.circular(8)),
                         child: const Text('ACTIVO',
                             style: TextStyle(
-                                color: Colors.greenAccent, fontSize: 10, fontWeight: FontWeight.bold)),
+                                color: kAccent, fontSize: 10, fontWeight: FontWeight.bold)),
                       ),
                     ],
                     const Spacer(),
                     Text('thr=${m.threshold}',
-                        style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11)),
+                        style: TextStyle(color: kInk.withOpacity(0.4), fontSize: 11)),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -1103,7 +1228,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 const SizedBox(height: 6),
                 Text(m.desc,
                     style: TextStyle(
-                        color: Colors.white.withOpacity(0.5), fontSize: 12, height: 1.4)),
+                        color: kInk.withOpacity(0.5), fontSize: 12, height: 1.4)),
               ],
             ),
           ),
@@ -1116,7 +1241,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     if (_activityMinutes.isEmpty) {
       return _card(
         child: Text('Sin datos de sesión todavía.',
-            style: TextStyle(color: Colors.white.withOpacity(0.4))),
+            style: TextStyle(color: kInk.withOpacity(0.4))),
       );
     }
     return _card(
@@ -1130,19 +1255,19 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                       SizedBox(
                           width: 110,
                           child: Text(e.key.displayName,
-                              style: const TextStyle(color: Colors.white, fontSize: 13))),
+                              style: const TextStyle(color: kInk, fontSize: 13))),
                       Expanded(
                         child: LinearProgressIndicator(
                           value: e.value / (_activeMinutes == 0 ? 1 : _activeMinutes),
-                          backgroundColor: Colors.white12,
-                          color: Colors.greenAccent,
+                          backgroundColor: kInk.withOpacity(0.10),
+                          color: kAccent,
                           minHeight: 6,
                           borderRadius: BorderRadius.circular(3),
                         ),
                       ),
                       const SizedBox(width: 8),
                       Text('${e.value} min',
-                          style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                          style: TextStyle(color: kInk.withOpacity(0.70), fontSize: 12)),
                     ],
                   ),
                 ))
@@ -1153,29 +1278,29 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   Widget _realtimeDebugCard() {
     return _card(
-      color: const Color(0xFF0D1F35),
+      color: kSurface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _metricRow('Actividad', _lastHar?.activity.displayName ?? 'â€”'),
+          _metricRow('Actividad', _lastHar?.activity.displayName ?? '—'),
           _metricRow('Confianza HAR', _lastHar != null
               ? '${(_lastHar!.confidence * 100).toStringAsFixed(1)}%'
-              : 'â€”'),
+              : '—'),
           _metricRow('SVM actual', '${_svmG.toStringAsFixed(3)} g'),
           _metricRow('CNN prob. caída', _lastFall != null
               ? '${(_lastFall!.cnnProbability * 100).toStringAsFixed(1)}%'
-              : 'â€”'),
+              : '—'),
           _metricRow('Etapa fall', _lastFall?.triggeredStage.toString() ?? '0'),
-          _metricRow('Modelo HAR', _harClassifier.isLoaded ? 'âœ“ loaded' : 'âœ— no disponible'),
-          _metricRow('Modelo fall', _fallDetector.isLoaded ? 'âœ“ loaded' : 'âœ— no disponible'),
+          _metricRow('Modelo HAR', _harClassifier.isLoaded ? '✓ loaded' : '✗ no disponible'),
+          _metricRow('Modelo fall', _fallDetector.isLoaded ? '✓ loaded' : '✗ no disponible'),
         ],
       ),
     );
   }
 
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  // TAB 3 â€” PRUEBAS
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ────────────────────────────────────────────────────────────────
+  // TAB 3 — PRUEBAS
+  // ────────────────────────────────────────────────────────────────
 
   Widget _buildTestsTab() {
     return SingleChildScrollView(
@@ -1191,14 +1316,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 _testButton(
                   label: 'Health check  GET /health',
                   icon: Icons.cloud_outlined,
-                  color: Colors.lightBlueAccent,
+                  color: const Color(0xFF2563EB),
                   onTap: _testHealth,
                 ),
                 const SizedBox(height: 8),
                 _testButton(
                   label: 'Enviar actividad  POST /events/activity',
                   icon: Icons.send_outlined,
-                  color: Colors.greenAccent,
+                  color: kAccent,
                   onTap: _testPostActivity,
                 ),
                 const SizedBox(height: 8),
@@ -1233,18 +1358,16 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             ),
           ),
           const SizedBox(height: 14),
-          _sectionTitle('HAR â€” prueba por actividad (datos reales del dataset)'),
+          _sectionTitle('HAR — prueba por actividad (datos reales del dataset)'),
           _card(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _testButton(label: 'Estático (sentado/parado)', icon: Icons.chair_outlined,      color: Colors.white54,       onTap: () => _testHar('static')),
+                _testButton(label: 'Estático (sentado/parado)', icon: Icons.chair_outlined,      color: const Color(0xFF475569),      onTap: () => _testHar('static')),
                 const SizedBox(height: 8),
-                _testButton(label: 'Caminando',                 icon: Icons.directions_walk,     color: Colors.greenAccent,   onTap: () => _testHar('walking')),
+                _testButton(label: 'Caminando',                 icon: Icons.directions_walk,     color: kAccent,   onTap: () => _testHar('walking')),
                 const SizedBox(height: 8),
-                _testButton(label: 'Corriendo',                 icon: Icons.directions_run,      color: Colors.lightGreenAccent, onTap: () => _testHar('running')),
-                const SizedBox(height: 8),
-                _testButton(label: 'Ciclismo (PAMAP2)',         icon: Icons.pedal_bike,          color: Colors.cyanAccent,    onTap: () => _testHar('cycling')),
+                _testButton(label: 'Corriendo',                 icon: Icons.directions_run,      color: kAccent, onTap: () => _testHar('running')),
                 const SizedBox(height: 8),
                 _testButton(label: 'Subiendo escaleras',        icon: Icons.north,               color: Colors.amberAccent,   onTap: () => _testHar('upstairs')),
                 const SizedBox(height: 8),
@@ -1268,7 +1391,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 _testButton(
                   label: 'ADL normal (sin caída)',
                   icon: Icons.shield_outlined,
-                  color: Colors.tealAccent,
+                  color: Colors.teal,
                   onTap: _testFallDetectorAdl,
                 ),
               ],
@@ -1298,7 +1421,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 Expanded(child: _sectionTitle('Resultados')),
                 TextButton(
                   onPressed: () => setState(() => _testResults.clear()),
-                  child: const Text('Limpiar', style: TextStyle(color: Colors.white38, fontSize: 11)),
+                  child: Text('Limpiar', style: TextStyle(color: kInk.withOpacity(0.38), fontSize: 11)),
                 ),
               ],
             ),
@@ -1317,9 +1440,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }) =>
       ElevatedButton.icon(
         style: ElevatedButton.styleFrom(
-          backgroundColor: color.withOpacity(0.12),
+          backgroundColor: color.withOpacity(0.13),
           foregroundColor: color,
-          side: BorderSide(color: color.withOpacity(0.3)),
+          disabledForegroundColor: color.withOpacity(0.45),
+          disabledBackgroundColor: color.withOpacity(0.07),
+          side: BorderSide(color: color.withOpacity(0.50)),
           alignment: Alignment.centerLeft,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         ),
@@ -1331,30 +1456,30 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   Widget _buildTestResultCard(_TestResult r) => Padding(
         padding: const EdgeInsets.only(bottom: 8),
         child: _card(
-          color: r.ok ? const Color(0xFF0D2D1A) : const Color(0xFF2D0D0D),
+          color: r.ok ? kAccentBg : kDangerBg,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
                   Icon(r.ok ? Icons.check_circle_outline : Icons.error_outline,
-                      color: r.ok ? Colors.greenAccent : Colors.redAccent, size: 16),
+                      color: r.ok ? kAccent : Colors.redAccent, size: 16),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(r.name,
                         style: TextStyle(
-                            color: r.ok ? Colors.greenAccent : Colors.redAccent,
+                            color: r.ok ? kAccent : Colors.redAccent,
                             fontWeight: FontWeight.bold,
                             fontSize: 13)),
                   ),
                   Text(r.elapsed,
-                      style: const TextStyle(color: Colors.white38, fontSize: 11)),
+                      style: TextStyle(color: kInk.withOpacity(0.38), fontSize: 11)),
                 ],
               ),
               const SizedBox(height: 6),
               Text(r.detail,
-                  style: const TextStyle(
-                      color: Colors.white70, fontSize: 12, fontFamily: 'monospace')),
+                  style: TextStyle(
+                      color: kInk.withOpacity(0.70), fontSize: 12, fontFamily: 'monospace')),
             ],
           ),
         ),
@@ -1375,7 +1500,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       _addResult(_TestResult(
         name: 'GET /health',
         ok: ok,
-        detail: ok ? 'status: ok  db: ok  redis: ok  minio: ok' : 'Sin respuesta â€” backend no alcanzable',
+        detail: ok ? 'status: ok  db: ok  redis: ok  minio: ok' : 'Sin respuesta — backend no alcanzable',
         elapsed: '${sw.elapsedMilliseconds} ms',
       ));
     } catch (e) {
@@ -1401,7 +1526,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               'total_vitapoints:  ${res['total_vitapoints']}\n'
               'streak_days:       ${res['streak_days']}\n'
               'level:             ${res['level']}'
-            : 'Sin respuesta â€” backend no alcanzable',
+            : 'Sin respuesta — backend no alcanzable',
         elapsed: '${sw.elapsedMilliseconds} ms',
       ));
     } catch (e) {
@@ -1423,8 +1548,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         name: 'POST /events/fall  (stage=2, svm=5.4g)',
         ok: ok,
         detail: ok
-            ? 'fall_id: $fallId\nstatus: pending â†’ worker esperará 30s ACK'
-            : 'Sin respuesta â€” backend no alcanzable',
+            ? 'fall_id: $fallId\nstatus: pending → worker esperará 30s ACK'
+            : 'Sin respuesta — backend no alcanzable',
         elapsed: '${sw.elapsedMilliseconds} ms',
       ));
       if (ok) await _api.ackFall(fallId); // auto-ACK so worker doesn't alert
@@ -1437,7 +1562,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   Future<void> _testHar(String type) async {
     if (!_harClassifier.isLoaded) {
-      _addResult(_TestResult(name: 'HAR â€” $type', ok: false, detail: 'Modelo no cargado', elapsed: '0 ms'));
+      _addResult(_TestResult(name: 'HAR — $type', ok: false, detail: 'Modelo no cargado', elapsed: '0 ms'));
       return;
     }
     setState(() { _testRunning = true; _cancelRequested = false; });
@@ -1451,7 +1576,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         case 'static':    window = kHarStaticSample;    expectedClass = Activity.stationary; break;
         case 'walking':   window = kHarWalkingSample;   expectedClass = Activity.walking;    break;
         case 'running':   window = kHarRunningSample;   expectedClass = Activity.running;    break;
-        case 'cycling':   window = kHarCyclingSample;   expectedClass = Activity.cycling;    break;
         case 'upstairs':  window = kHarUpstairsSample;  expectedClass = Activity.upstairs;   break;
         case 'downstairs':window = kHarDownstairsSample;expectedClass = Activity.downstairs; break;
         default:          window = kHarStaticSample;    expectedClass = Activity.stationary;
@@ -1461,18 +1585,18 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       if (_cancelRequested) return;
       final correct = result?.activity == expectedClass;
       _addResult(_TestResult(
-        name: 'HAR â€” $type (datos reales dataset)',
+        name: 'HAR — $type (datos reales dataset)',
         ok: result != null && correct,
         detail: result != null
             ? 'Esperado:  ${expectedClass.displayName}\n'
-              'Predicción: ${result.activity.displayName} ${correct ? "âœ“" : "âœ—"}\n'
+              'Predicción: ${result.activity.displayName} ${correct ? "✓" : "✗"}\n'
               'Confianza:  ${(result.confidence * 100).toStringAsFixed(1)}%\n'
               'VitaPoints: ${result.vitaPointsPerMinute} pts/min'
             : 'Clasificador devolvió null',
         elapsed: '${sw.elapsedMilliseconds} ms',
       ));
     } catch (e) {
-      _addResult(_TestResult(name: 'HAR â€” $type', ok: false, detail: 'Error: $e', elapsed: '${sw.elapsedMilliseconds} ms'));
+      _addResult(_TestResult(name: 'HAR — $type', ok: false, detail: 'Error: $e', elapsed: '${sw.elapsedMilliseconds} ms'));
     } finally {
       if (mounted && !_cancelRequested) setState(() => _testRunning = false);
     }
@@ -1486,7 +1610,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       final window = List.generate(100, (i) {
         if (i >= 44 && i <= 56) {
           final phase = (i - 44) / 12.0; // 0..1
-          final peak = 6.0 * sin(phase * pi); // clean half-sine, 0â†’6â†’0
+          final peak = 6.0 * sin(phase * pi); // clean half-sine, 0→6→0
           return [peak, peak * 0.3, 1.0 + peak * 0.5, 0.5, 0.3, 0.2];
         }
         // Post-fall immobility (last 25 samples very still)
@@ -1497,19 +1621,19 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       sw.stop();
       if (_cancelRequested) return;
       _addResult(_TestResult(
-        name: 'Fall detector â€” caída simulada (pico 6g)',
+        name: 'Fall detector — caída simulada (pico 6g)',
         ok: result.isFall,
         detail: 'Etapa activada: ${result.triggeredStage}\n'
             'SVM peak:       ${result.svmPeak.toStringAsFixed(3)} g\n'
             'CNN prob:       ${(result.cnnProbability * 100).toStringAsFixed(1)}%\n'
             'Inmovilidad:    ${result.immobilityConfirmed}\n'
-            'Umbral SVM:     ${FallDetector.svmThreshold} g',
+            'Umbral SVM:     ${_fallDetector.svmThreshold.toStringAsFixed(1)} g',
         elapsed: '${sw.elapsedMilliseconds} ms',
       ));
     } catch (e) {
       sw.stop();
       _addResult(_TestResult(
-        name: 'Fall detector â€” caída simulada (pico 6g)',
+        name: 'Fall detector — caída simulada (pico 6g)',
         ok: false,
         detail: 'Excepción en inferencia CNN: $e\n'
             'Stage 1 (SVM) puede haber pasado pero CNN lanzó error.',
@@ -1536,7 +1660,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               'this_week:   ${vp.thisWeek}\n'
               'streak_days: ${vp.streakDays}\n'
               'level:       ${vp.level}'
-            : 'Sin respuesta â€” backend no alcanzable',
+            : 'Sin respuesta — backend no alcanzable',
         elapsed: '${sw.elapsedMilliseconds} ms',
       ));
       if (ok && mounted) {
@@ -1583,23 +1707,23 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF2D0A0A),
+        backgroundColor: kDangerBg,
         title: const Text('Borrar datos de demo_user_001',
-            style: TextStyle(color: Colors.white)),
-        content: const Text(
+            style: TextStyle(color: kInk)),
+        content: Text(
           'Esto borra permanentemente los datos del usuario demo en el backend. '
           'Útil para resetear entre demos.',
-          style: TextStyle(color: Colors.white70),
+          style: TextStyle(color: kInk.withOpacity(0.70)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancelar', style: TextStyle(color: Colors.white54)),
+            child: Text('Cancelar', style: TextStyle(color: kInk.withOpacity(0.54))),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Borrar', style: TextStyle(color: Colors.white)),
+            child: const Text('Borrar', style: TextStyle(color: kInk)),
           ),
         ],
       ),
@@ -1615,8 +1739,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         name: 'DELETE /users/{id}/data',
         ok: ok,
         detail: ok
-            ? '204 No Content â€” todos los datos borrados en cascada'
-            : 'Sin respuesta â€” backend no alcanzable',
+            ? '204 No Content — todos los datos borrados en cascada'
+            : 'Sin respuesta — backend no alcanzable',
         elapsed: '${sw.elapsedMilliseconds} ms',
       ));
       if (ok && mounted) {
@@ -1646,7 +1770,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       sw.stop();
       if (_cancelRequested) return;
       _addResult(_TestResult(
-        name: 'Fall detector â€” caminar normal (sin caída)',
+        name: 'Fall detector — caminar normal (sin caída)',
         ok: !result.isFall,
         detail: 'Etapa activada: ${result.triggeredStage}\n'
             'SVM peak:       ${result.svmPeak.toStringAsFixed(3)} g\n'
@@ -1667,8 +1791,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: color ?? const Color(0xFF1A2D4A),
+          color: color ?? kSurface,
           borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: kInk.withOpacity(0.06)),
         ),
         child: child,
       );
@@ -1677,7 +1802,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         padding: const EdgeInsets.only(bottom: 8),
         child: Text(title,
             style: TextStyle(
-                color: Colors.white.withOpacity(0.55),
+                color: kInk.withOpacity(0.55),
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.8)),
@@ -1690,11 +1815,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             SizedBox(
                 width: 140,
                 child: Text(label,
-                    style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13))),
+                    style: TextStyle(color: kInk.withOpacity(0.5), fontSize: 13))),
             Expanded(
               child: Text(value,
                   style: const TextStyle(
-                      color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
+                      color: kInk, fontSize: 13, fontWeight: FontWeight.w500)),
             ),
           ],
         ),
@@ -1706,9 +1831,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           const SizedBox(height: 4),
           Text(value,
               style: const TextStyle(
-                  color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                  color: kInk, fontSize: 22, fontWeight: FontWeight.bold)),
           Text(label,
-              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 11)),
+              style: TextStyle(color: kInk.withOpacity(0.5), fontSize: 11)),
         ],
       );
 

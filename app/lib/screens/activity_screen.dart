@@ -101,7 +101,10 @@ class _ActivityScreenState extends State<ActivityScreen> {
     // HAR window
     final harWindow = _harBuffer.addSample(sample);
     if (harWindow != null && _harClassifier.isLoaded) {
-      final result = _harClassifier.classify(harWindow);
+      final result = _harClassifier.classify(
+        harWindow,
+        altitudeDeltaM: _altitudeService.altitudeDeltaOverLastSamples(128),
+      );
       if (result != null) {
         setState(() {
           _currentActivity = result.activity;
@@ -242,7 +245,6 @@ class _ActivityScreenState extends State<ActivityScreen> {
       Activity.stationary: Icons.chair,
       Activity.walking: Icons.directions_walk,
       Activity.running: Icons.directions_run,
-      Activity.cycling: Icons.pedal_bike,
       Activity.upstairs: Icons.stairs,
       Activity.downstairs: Icons.stairs_outlined,
     };

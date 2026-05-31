@@ -85,12 +85,17 @@ class VitaliaApp extends StatelessWidget {
     return MaterialApp(
       title: 'Vitalia HAR',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData.dark().copyWith(
-        colorScheme: ColorScheme.dark(
-          primary: Colors.greenAccent,
-          secondary: Colors.blueAccent.shade100,
+      theme: ThemeData.light().copyWith(
+        scaffoldBackgroundColor: const Color(0xFFEFF2F6),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF03045E),
+          primary: const Color(0xFF03045E),
+          brightness: Brightness.light,
         ),
-        useMaterial3: true,
+        sliderTheme: const SliderThemeData(
+          activeTrackColor: Color(0xFF03045E),
+          thumbColor: Color(0xFF03045E),
+        ),
       ),
       home: const HomePage(),
     );

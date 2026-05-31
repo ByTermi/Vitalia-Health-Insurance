@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../storage/database_service.dart';
 
+const _kBg = Color(0xFFEFF2F6);
+const _kSurface = Color(0xFFFFFFFF);
+const _kInk = Color(0xFF1F2533);
+const _kAccent = Color(0xFF03045E);
+
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
@@ -35,9 +40,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setStateDialog) => AlertDialog(
-          backgroundColor: const Color(0xFF1A2D4A),
+          backgroundColor: _kSurface,
           title: const Text('Conexión al Backend',
-              style: TextStyle(color: Colors.white)),
+              style: TextStyle(color: _kInk, fontWeight: FontWeight.bold)),
           content: SizedBox(
             width: double.maxFinite,
             child: SingleChildScrollView(
@@ -46,21 +51,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (profiles.isNotEmpty) ...[
-                    const Text('Perfiles guardados',
-                        style: TextStyle(color: Colors.white54, fontSize: 12)),
+                    Text('Perfiles guardados',
+                        style: TextStyle(color: _kInk.withOpacity(0.5), fontSize: 12)),
                     const SizedBox(height: 4),
                     ...profiles.map((p) => ListTile(
                           contentPadding: EdgeInsets.zero,
                           dense: true,
                           title: Text(p.name,
-                              style: const TextStyle(
-                                  color: Colors.white, fontSize: 13)),
+                              style: const TextStyle(color: _kInk, fontSize: 13)),
                           subtitle: Text('${p.ip}:${p.port}',
-                              style: const TextStyle(
-                                  color: Colors.white54, fontSize: 11)),
+                              style: TextStyle(
+                                  color: _kInk.withOpacity(0.5), fontSize: 11)),
                           trailing: IconButton(
-                            icon: const Icon(Icons.delete_outline,
-                                color: Colors.white38, size: 18),
+                            icon: Icon(Icons.delete_outline,
+                                color: _kInk.withOpacity(0.38), size: 18),
                             onPressed: () async {
                               await _db.deleteProfile(p.id!);
                               final updated = await _db.getAllProfiles();
@@ -79,7 +83,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             if (mounted) setState(() => _connected = ok);
                           },
                         )),
-                    const Divider(color: Colors.white12),
+                    Divider(color: _kInk.withOpacity(0.10)),
                     const SizedBox(height: 4),
                   ],
                   _field(ipCtrl, 'IP del servidor', '10.0.2.2'),
@@ -89,9 +93,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const SizedBox(height: 8),
                   _field(nameCtrl, 'Guardar como perfil', 'Casa, Trabajo...'),
                   const SizedBox(height: 6),
-                  const Text(
+                  Text(
                     'Emulador: 10.0.2.2 · Dispositivo físico: IP local del PC',
-                    style: TextStyle(color: Colors.white38, fontSize: 11),
+                    style:
+                        TextStyle(color: _kInk.withOpacity(0.38), fontSize: 11),
                   ),
                 ],
               ),
@@ -100,12 +105,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancelar',
-                  style: TextStyle(color: Colors.white54)),
+              child: Text('Cancelar',
+                  style: TextStyle(color: _kInk.withOpacity(0.54))),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.greenAccent),
+                  backgroundColor: _kAccent, foregroundColor: Colors.white),
               onPressed: () async {
                 final ip = ipCtrl.text.trim();
                 final port = int.tryParse(portCtrl.text.trim()) ?? 8000;
@@ -128,8 +133,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 final ok = await _api.checkHealth();
                 if (mounted) setState(() => _connected = ok);
               },
-              child: const Text('Conectar',
-                  style: TextStyle(color: Colors.black)),
+              child: const Text('Conectar'),
             ),
           ],
         ),
@@ -150,20 +154,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF2D0A0A),
+        backgroundColor: const Color(0xFFFDECEC),
         title: const Text('Borrar todos mis datos',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        content: const Text(
+            style: TextStyle(color: _kInk, fontWeight: FontWeight.bold)),
+        content: Text(
           'Esto elimina todos tus eventos de actividad, caídas y VitaPoints '
           'del servidor de forma permanente (Art. 17 RGPD — Derecho al olvido).\n\n'
           'Los datos locales del dispositivo no se eliminan aquí.',
-          style: TextStyle(color: Colors.white70),
+          style: TextStyle(color: _kInk.withOpacity(0.70)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancelar',
-                style: TextStyle(color: Colors.white54)),
+            child: Text('Cancelar',
+                style: TextStyle(color: _kInk.withOpacity(0.54))),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
@@ -179,25 +183,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final ok = await _api.deleteUserData();
     setState(() {
       _working = false;
-      _statusMsg = ok ? 'Datos eliminados del servidor (204)' : 'Error: servidor no alcanzable';
+      _statusMsg = ok
+          ? 'Datos eliminados del servidor (204)'
+          : 'Error: servidor no alcanzable';
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0A1628),
+      backgroundColor: _kBg,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0D1F35),
+        backgroundColor: _kSurface,
+        elevation: 0,
         title: const Text('Ajustes',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            style: TextStyle(color: _kInk, fontWeight: FontWeight.bold)),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back, color: _kInk),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
       body: _working
-          ? const Center(child: CircularProgressIndicator(color: Colors.greenAccent))
+          ? const Center(child: CircularProgressIndicator(color: _kAccent))
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
@@ -212,28 +219,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             _connected
                                 ? Icons.cloud_done_outlined
                                 : Icons.cloud_off_outlined,
-                            color: _connected ? Colors.greenAccent : Colors.white38,
+                            color: _connected
+                                ? _kAccent
+                                : _kInk.withOpacity(0.38),
                             size: 18,
                           ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               '${_api.ip}:${_api.port}',
-                              style: const TextStyle(
-                                  color: Colors.white, fontSize: 14),
+                              style:
+                                  const TextStyle(color: _kInk, fontSize: 14),
                             ),
                           ),
                           TextButton(
                             onPressed: _showIpDialog,
                             child: const Text('Cambiar',
-                                style: TextStyle(color: Colors.greenAccent)),
+                                style: TextStyle(color: _kAccent)),
                           ),
                         ],
                       ),
                       Text(
                         _connected ? 'Conectado' : 'Sin conexión',
                         style: TextStyle(
-                            color: _connected ? Colors.greenAccent : Colors.white38,
+                            color: _connected
+                                ? _kAccent
+                                : _kInk.withOpacity(0.38),
                             fontSize: 12),
                       ),
                     ],
@@ -245,9 +256,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'SQLite en el dispositivo: lecturas de sensores y caídas locales.',
-                        style: TextStyle(color: Colors.white54, fontSize: 12),
+                        style: TextStyle(
+                            color: _kInk.withOpacity(0.55), fontSize: 12),
                       ),
                       const SizedBox(height: 12),
                       SizedBox(
@@ -270,18 +282,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Art. 17 RGPD — Derecho al olvido.\n'
                         'Elimina permanentemente todos tus datos de actividad, caídas '
                         'y VitaPoints del servidor.',
-                        style: TextStyle(color: Colors.white54, fontSize: 12, height: 1.5),
+                        style: TextStyle(
+                            color: _kInk.withOpacity(0.55),
+                            fontSize: 12,
+                            height: 1.5),
                       ),
                       const SizedBox(height: 12),
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red.withOpacity(0.15),
+                            backgroundColor: Colors.red.withOpacity(0.13),
                             foregroundColor: Colors.redAccent,
                             side: const BorderSide(color: Colors.redAccent),
                           ),
@@ -297,12 +312,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1A2D4A),
+                      color: _kSurface,
                       borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: _kInk.withOpacity(0.08)),
                     ),
                     child: Text(_statusMsg!,
-                        style: const TextStyle(
-                            color: Colors.greenAccent, fontSize: 13)),
+                        style: const TextStyle(color: _kAccent, fontSize: 13)),
                   ),
                 ],
               ],
@@ -313,8 +328,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _section(String label) => Padding(
         padding: const EdgeInsets.only(bottom: 8),
         child: Text(label,
-            style: const TextStyle(
-                color: Colors.white54,
+            style: TextStyle(
+                color: _kInk.withOpacity(0.55),
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.8)),
@@ -324,8 +339,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFF1A2D4A),
+          color: _kSurface,
           borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: _kInk.withOpacity(0.06)),
         ),
         child: child,
       );
@@ -334,17 +350,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
           {TextInputType? type}) =>
       TextField(
         controller: ctrl,
-        style: const TextStyle(color: Colors.white),
+        style: const TextStyle(color: _kInk),
         keyboardType: type,
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: const TextStyle(color: Colors.white54),
+          labelStyle: TextStyle(color: _kInk.withOpacity(0.55)),
           hintText: hint,
-          hintStyle: const TextStyle(color: Colors.white24),
-          enabledBorder: const OutlineInputBorder(
-              borderSide: BorderSide(color: Colors.white24)),
+          hintStyle: TextStyle(color: _kInk.withOpacity(0.28)),
+          enabledBorder: OutlineInputBorder(
+              borderSide: BorderSide(color: _kInk.withOpacity(0.20))),
           focusedBorder: const OutlineInputBorder(
-              borderSide: BorderSide(color: Colors.greenAccent)),
+              borderSide: BorderSide(color: _kAccent)),
         ),
       );
 }
