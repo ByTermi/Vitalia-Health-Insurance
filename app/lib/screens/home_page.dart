@@ -22,7 +22,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
-  // â”€â”€ Models & sensors â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Models & sensors ──────────────────────────────────────────────
   final _sensorService = SensorService();
   final _harBuffer = SlidingWindowBuffer(
       windowSize: 128, overlap: 0.5, rowMapper: (s) => s.toListLinear());
@@ -33,7 +33,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   StreamSubscription? _sensorSub;
   Timer? _pointsTimer;
 
-  // â”€â”€ UI state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── UI state ──────────────────────────────────────────────────────
   HarResult? _lastHar;
   FallResult? _lastFall;
   double _svmG = 0.0;
@@ -47,25 +47,25 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   SensorSample? _lastSample;
   int _tab = 0;
 
-  // â”€â”€ Backend â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Backend ───────────────────────────────────────────────────────
   final _api = ApiService.instance;
   final _ntfy = NtfyService();
   StreamSubscription? _ntfySub;
   bool _backendConnected = false;
   String? _pendingFallId;
 
-  // â”€â”€ Background service â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Background service ────────────────────────────────────────────
   StreamSubscription? _bgFallSub;
   StreamSubscription? _notifTapSub;
 
-  // â”€â”€ Tests tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Tests tab ────────────────────────────────────────────────────
   final List<_TestResult> _testResults = [];
   bool _testRunning = false;
   bool _cancelRequested = false;
 
-  // â”€â”€ Chart & DB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Chart & DB ────────────────────────────────────────────────────
   static const int _chartLen = 250; // 5 s @ 50 Hz
-  static const int _dbDecimate = 10; // store 1 of every 10 samples â†’ 5 Hz
+  static const int _dbDecimate = 10; // store 1 of every 10 samples → 5 Hz
   final List<double> _axBuf = [], _ayBuf = [], _azBuf = [];
   int _sampleCount = 0;
   int _dbReadingCount = 0;
@@ -83,7 +83,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     switch (state) {
       case AppLifecycleState.paused:
       case AppLifecycleState.detached:
-        // App going to background â€” hand off to background service.
+        // App going to background — hand off to background service.
         _sensorSub?.cancel();
         _sensorService.stop();
         FallBackgroundService.start();
@@ -99,7 +99,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         });
         break;
       case AppLifecycleState.resumed:
-        // App back to foreground â€” stop background service, resume sensors.
+        // App back to foreground — stop background service, resume sensors.
         _bgFallSub?.cancel();
         FallBackgroundService.stop();
         if (mounted) {
@@ -215,12 +215,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       final activity = _lastHar?.activity;
       if (activity != null && activity.isActive) {
         setState(() {
-          // Optimistic local increment â€” overwritten by backend response when online
+          // Optimistic local increment — overwritten by backend response when online
           _vitaPoints += activity.vitaPointsPerMin;
           _activeMinutes++;
           _activityMinutes[activity] = (_activityMinutes[activity] ?? 0) + 1;
         });
-        // Send activity event to backend â€” use response as source of truth
+        // Send activity event to backend — use response as source of truth
         _api.postActivity(
           activity: activity.name,
           durationSeconds: 60,
@@ -251,7 +251,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       _azBuf.removeAt(0);
     }
 
-    // SQLite â€” store every _dbDecimate-th sample
+    // SQLite — store every _dbDecimate-th sample
     if (_sampleCount % _dbDecimate == 0) {
       _db.insertReading(SensorReading(
         ts: DateTime.now().millisecondsSinceEpoch,
@@ -349,7 +349,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             onPressed: () {
               Navigator.of(ctx).pop();
               setState(() => _inFallAlert = false);
-              // No ACK â†’ backend worker will send ntfy+email alert
+              // No ACK → backend worker will send ntfy+email alert
             },
             child: const Text('Llamar a emergencias'),
           ),
@@ -437,9 +437,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     );
   }
 
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  // TAB 1 â€” ACTIVIDAD
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ────────────────────────────────────────────────────────────────
+  // TAB 1 — ACTIVIDAD
+  // ────────────────────────────────────────────────────────────────
 
   Widget _buildActivityTab() {
     return SingleChildScrollView(
@@ -467,8 +467,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       Activity.walking: Icons.directions_walk,
       Activity.running: Icons.directions_run,
       Activity.cycling: Icons.pedal_bike,
-      Activity.upstairs: Icons.north,
-      Activity.downstairs: Icons.south,
+      Activity.stairs: Icons.stairs,
     };
 
     return _card(
@@ -482,8 +481,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           const SizedBox(height: 10),
           Text(
             !_modelsLoaded
-                ? 'Cargando modeloâ€¦'
-                : (activity?.displayName ?? 'Detectandoâ€¦'),
+                ? 'Cargando modelo…'
+                : (activity?.displayName ?? 'Detectando…'),
             style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold),
           ),
           if (_lastHar != null) ...[
@@ -584,7 +583,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 Text(
                   _inFallAlert
                       ? '¡Caída detectada!'
-                      : (stage1Active ? 'Impacto â€” analizando CNNâ€¦' : 'Monitor activo'),
+                      : (stage1Active ? 'Impacto — analizando CNN…' : 'Monitor activo'),
                   style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
                 ),
                 Text(
@@ -644,10 +643,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // â”€â”€ Header row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          // ── Header row ──────────────────────────────────────────
           Row(
             children: [
-              Text('Acelerómetro â€” últimos 5 s',
+              Text('Acelerómetro — últimos 5 s',
                   style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.45),
                       fontSize: 11,
@@ -663,7 +662,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           ),
           const SizedBox(height: 10),
 
-          // â”€â”€ Line chart â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          // ── Line chart ──────────────────────────────────────────
           SizedBox(
             height: 120,
             child: hasData
@@ -710,12 +709,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                     duration: Duration.zero,
                   )
                 : const Center(
-                    child: Text('Esperando datosâ€¦',
+                    child: Text('Esperando datos…',
                         style: TextStyle(color: Colors.white24))),
           ),
           const SizedBox(height: 12),
 
-          // â”€â”€ Numeric values â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          // ── Numeric values ───────────────────────────────────────
           Row(
             children: [
               Expanded(
@@ -728,9 +727,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                             fontSize: 10,
                             letterSpacing: 0.5)),
                     const SizedBox(height: 3),
-                    _sensorRow('X', s != null ? fmt(s.ax) : 'â€”', Colors.redAccent),
-                    _sensorRow('Y', s != null ? fmt(s.ay) : 'â€”', Colors.greenAccent),
-                    _sensorRow('Z', s != null ? fmt(s.az) : 'â€”', Colors.lightBlueAccent),
+                    _sensorRow('X', s != null ? fmt(s.ax) : '—', Colors.redAccent),
+                    _sensorRow('Y', s != null ? fmt(s.ay) : '—', Colors.greenAccent),
+                    _sensorRow('Z', s != null ? fmt(s.az) : '—', Colors.lightBlueAccent),
                   ],
                 ),
               ),
@@ -747,9 +746,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                               fontSize: 10,
                               letterSpacing: 0.5)),
                       const SizedBox(height: 3),
-                      _sensorRow('X', s != null ? fmt(s.gx) : 'â€”', Colors.redAccent),
-                      _sensorRow('Y', s != null ? fmt(s.gy) : 'â€”', Colors.greenAccent),
-                      _sensorRow('Z', s != null ? fmt(s.gz) : 'â€”', Colors.lightBlueAccent),
+                      _sensorRow('X', s != null ? fmt(s.gx) : '—', Colors.redAccent),
+                      _sensorRow('Y', s != null ? fmt(s.gy) : '—', Colors.greenAccent),
+                      _sensorRow('Z', s != null ? fmt(s.gz) : '—', Colors.lightBlueAccent),
                     ],
                   ),
                 ),
@@ -762,7 +761,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               Text('SVM: ',
                   style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.45), fontSize: 12)),
-              Text(s != null ? '${s.svmG.toStringAsFixed(3)} g' : 'â€”',
+              Text(s != null ? '${s.svmG.toStringAsFixed(3)} g' : '—',
                   style: const TextStyle(
                       color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
               const Spacer(),
@@ -811,9 +810,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         ),
       );
 
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  // TAB 2 â€” MÉTRICAS
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ────────────────────────────────────────────────────────────────
+  // TAB 2 — MÉTRICAS
+  // ────────────────────────────────────────────────────────────────
 
   Widget _buildMetricsTab() {
     return SingleChildScrollView(
@@ -821,19 +820,19 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _sectionTitle('Modelo HAR â€” Reconocimiento de Actividad'),
+          _sectionTitle('Modelo HAR — Reconocimiento de Actividad'),
           _harModelCard(),
           const SizedBox(height: 14),
           _sectionTitle('VitaPoints por Actividad'),
           _vitaPointsBreakdownCard(),
           const SizedBox(height: 14),
-          _sectionTitle('Detector de Caídas â€” Cascada 3 Etapas'),
+          _sectionTitle('Detector de Caídas — Cascada 3 Etapas'),
           _fallModelCard(),
           const SizedBox(height: 14),
           _sectionTitle('Modos de Detección'),
           _modesExplanationCard(),
           const SizedBox(height: 14),
-          _sectionTitle('Sesión â€” Actividad desglosada'),
+          _sectionTitle('Sesión — Actividad desglosada'),
           _sessionBreakdownCard(),
           const SizedBox(height: 14),
           _sectionTitle('Estado en tiempo real'),
@@ -848,17 +847,17 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _metricRow('Tipo', 'CNN 1D â€” 6 clases de actividad'),
+          _metricRow('Tipo', 'CNN 1D — 5 clases de actividad'),
           _metricRow('Entrada', '128 muestras × 6 canales @50 Hz (2.56 s)'),
           _metricRow('Canales', 'ax, ay, az (g) + gx, gy, gz (rad/s)'),
           _metricRow('Baseline RF', 'Recall 0.931 | AUC 0.986 (LOSO)'),
-          _metricRow('Modelo', _harClassifier.isLoaded ? 'Cargado âœ“' : 'No disponible'),
+          _metricRow('Modelo', _harClassifier.isLoaded ? 'Cargado ✓' : 'No disponible'),
           _metricRow('Tamaño', 'har_model_int8.tflite (<500 KB)'),
           const SizedBox(height: 8),
           Text(
             'El modelo CNN clasifica cada ventana de 2.56 s de señal bruta del '
             'acelerómetro y giroscopio directamente, sin calcular features manuales. '
-            'La cuantización INT8 lo hace ejecutable en 20â€“30 ms en cualquier smartphone.',
+            'La cuantización INT8 lo hace ejecutable en 20—30 ms en cualquier smartphone.',
             style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 12, height: 1.5),
           ),
         ],
@@ -949,8 +948,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               _metricRow('Recall (modo conservador)', '~100%  (threshold 0.30)'),
               _metricRow('Recall (equilibrado)', '99.7%  (threshold 0.50)'),
               _metricRow('Precisión (estricto)', '>90%  (threshold 0.70)'),
-              _metricRow('Tamaño', '${FallDetector.windowSize} muestras â†’ 21.6 KB INT8'),
-              _metricRow('Modelo', _fallDetector.isLoaded ? 'Cargado âœ“' : 'No disponible'),
+              _metricRow('Tamaño', '${FallDetector.windowSize} muestras → 21.6 KB INT8'),
+              _metricRow('Modelo', _fallDetector.isLoaded ? 'Cargado ✓' : 'No disponible'),
               const SizedBox(height: 8),
               Text(
                 'Por qué como sub-problema binario: las caídas son eventos transitorios con '
@@ -1037,7 +1036,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         recall: '99.7%',
         precision: '98.7%',
         desc: 'Maximiza el F1-score. Balance óptimo entre recall y precisión. '
-            'Recomendado para la mayoría de asegurados (45â€“64 años).',
+            'Recomendado para la mayoría de asegurados (45—64 años).',
         color: Colors.greenAccent,
       ),
       (
@@ -1157,25 +1156,25 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _metricRow('Actividad', _lastHar?.activity.displayName ?? 'â€”'),
+          _metricRow('Actividad', _lastHar?.activity.displayName ?? '—'),
           _metricRow('Confianza HAR', _lastHar != null
               ? '${(_lastHar!.confidence * 100).toStringAsFixed(1)}%'
-              : 'â€”'),
+              : '—'),
           _metricRow('SVM actual', '${_svmG.toStringAsFixed(3)} g'),
           _metricRow('CNN prob. caída', _lastFall != null
               ? '${(_lastFall!.cnnProbability * 100).toStringAsFixed(1)}%'
-              : 'â€”'),
+              : '—'),
           _metricRow('Etapa fall', _lastFall?.triggeredStage.toString() ?? '0'),
-          _metricRow('Modelo HAR', _harClassifier.isLoaded ? 'âœ“ loaded' : 'âœ— no disponible'),
-          _metricRow('Modelo fall', _fallDetector.isLoaded ? 'âœ“ loaded' : 'âœ— no disponible'),
+          _metricRow('Modelo HAR', _harClassifier.isLoaded ? '✓ loaded' : '✗ no disponible'),
+          _metricRow('Modelo fall', _fallDetector.isLoaded ? '✓ loaded' : '✗ no disponible'),
         ],
       ),
     );
   }
 
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  // TAB 3 â€” PRUEBAS
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ────────────────────────────────────────────────────────────────
+  // TAB 3 — PRUEBAS
+  // ────────────────────────────────────────────────────────────────
 
   Widget _buildTestsTab() {
     return SingleChildScrollView(
@@ -1233,22 +1232,20 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             ),
           ),
           const SizedBox(height: 14),
-          _sectionTitle('HAR â€” prueba por actividad (datos reales del dataset)'),
+          _sectionTitle('HAR — prueba por actividad (datos reales UT Complex)'),
           _card(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _testButton(label: 'Estático (sentado/parado)', icon: Icons.chair_outlined,      color: Colors.white54,       onTap: () => _testHar('static')),
+                _testButton(label: 'Estático (sentado/parado)', icon: Icons.chair_outlined,      color: Colors.white54,          onTap: () => _testHar('static')),
                 const SizedBox(height: 8),
-                _testButton(label: 'Caminando',                 icon: Icons.directions_walk,     color: Colors.greenAccent,   onTap: () => _testHar('walking')),
+                _testButton(label: 'Caminando',                 icon: Icons.directions_walk,     color: Colors.greenAccent,      onTap: () => _testHar('walking')),
                 const SizedBox(height: 8),
                 _testButton(label: 'Corriendo',                 icon: Icons.directions_run,      color: Colors.lightGreenAccent, onTap: () => _testHar('running')),
                 const SizedBox(height: 8),
-                _testButton(label: 'Ciclismo (PAMAP2)',         icon: Icons.pedal_bike,          color: Colors.cyanAccent,    onTap: () => _testHar('cycling')),
+                _testButton(label: 'Ciclismo',                  icon: Icons.pedal_bike,          color: Colors.cyanAccent,       onTap: () => _testHar('cycling')),
                 const SizedBox(height: 8),
-                _testButton(label: 'Subiendo escaleras',        icon: Icons.north,               color: Colors.amberAccent,   onTap: () => _testHar('upstairs')),
-                const SizedBox(height: 8),
-                _testButton(label: 'Bajando escaleras',         icon: Icons.south,               color: Colors.orangeAccent,  onTap: () => _testHar('downstairs')),
+                _testButton(label: 'Escaleras',                 icon: Icons.stairs,              color: Colors.amberAccent,      onTap: () => _testHar('stairs')),
               ],
             ),
           ),
@@ -1375,7 +1372,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       _addResult(_TestResult(
         name: 'GET /health',
         ok: ok,
-        detail: ok ? 'status: ok  db: ok  redis: ok  minio: ok' : 'Sin respuesta â€” backend no alcanzable',
+        detail: ok ? 'status: ok  db: ok  redis: ok  minio: ok' : 'Sin respuesta — backend no alcanzable',
         elapsed: '${sw.elapsedMilliseconds} ms',
       ));
     } catch (e) {
@@ -1401,7 +1398,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               'total_vitapoints:  ${res['total_vitapoints']}\n'
               'streak_days:       ${res['streak_days']}\n'
               'level:             ${res['level']}'
-            : 'Sin respuesta â€” backend no alcanzable',
+            : 'Sin respuesta — backend no alcanzable',
         elapsed: '${sw.elapsedMilliseconds} ms',
       ));
     } catch (e) {
@@ -1423,8 +1420,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         name: 'POST /events/fall  (stage=2, svm=5.4g)',
         ok: ok,
         detail: ok
-            ? 'fall_id: $fallId\nstatus: pending â†’ worker esperará 30s ACK'
-            : 'Sin respuesta â€” backend no alcanzable',
+            ? 'fall_id: $fallId\nstatus: pending → worker esperará 30s ACK'
+            : 'Sin respuesta — backend no alcanzable',
         elapsed: '${sw.elapsedMilliseconds} ms',
       ));
       if (ok) await _api.ackFall(fallId); // auto-ACK so worker doesn't alert
@@ -1437,7 +1434,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   Future<void> _testHar(String type) async {
     if (!_harClassifier.isLoaded) {
-      _addResult(_TestResult(name: 'HAR â€” $type', ok: false, detail: 'Modelo no cargado', elapsed: '0 ms'));
+      _addResult(_TestResult(name: 'HAR — $type', ok: false, detail: 'Modelo no cargado', elapsed: '0 ms'));
       return;
     }
     setState(() { _testRunning = true; _cancelRequested = false; });
@@ -1448,31 +1445,30 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       final List<List<double>> window;
       final Activity expectedClass;
       switch (type) {
-        case 'static':    window = kHarStaticSample;    expectedClass = Activity.stationary; break;
-        case 'walking':   window = kHarWalkingSample;   expectedClass = Activity.walking;    break;
-        case 'running':   window = kHarRunningSample;   expectedClass = Activity.running;    break;
-        case 'cycling':   window = kHarCyclingSample;   expectedClass = Activity.cycling;    break;
-        case 'upstairs':  window = kHarUpstairsSample;  expectedClass = Activity.upstairs;   break;
-        case 'downstairs':window = kHarDownstairsSample;expectedClass = Activity.downstairs; break;
-        default:          window = kHarStaticSample;    expectedClass = Activity.stationary;
+        case 'static':   window = kHarStaticSample;   expectedClass = Activity.stationary; break;
+        case 'walking':  window = kHarWalkingSample;  expectedClass = Activity.walking;    break;
+        case 'running':  window = kHarRunningSample;  expectedClass = Activity.running;    break;
+        case 'cycling':  window = kHarCyclingSample;  expectedClass = Activity.cycling;    break;
+        case 'stairs':   window = kHarStairsSample;   expectedClass = Activity.stairs;     break;
+        default:         window = kHarStaticSample;   expectedClass = Activity.stationary;
       }
       final result = _harClassifier.classify(window);
       sw.stop();
       if (_cancelRequested) return;
       final correct = result?.activity == expectedClass;
       _addResult(_TestResult(
-        name: 'HAR â€” $type (datos reales dataset)',
+        name: 'HAR — $type (datos reales dataset)',
         ok: result != null && correct,
         detail: result != null
             ? 'Esperado:  ${expectedClass.displayName}\n'
-              'Predicción: ${result.activity.displayName} ${correct ? "âœ“" : "âœ—"}\n'
+              'Predicción: ${result.activity.displayName} ${correct ? "✓" : "✗"}\n'
               'Confianza:  ${(result.confidence * 100).toStringAsFixed(1)}%\n'
               'VitaPoints: ${result.vitaPointsPerMinute} pts/min'
             : 'Clasificador devolvió null',
         elapsed: '${sw.elapsedMilliseconds} ms',
       ));
     } catch (e) {
-      _addResult(_TestResult(name: 'HAR â€” $type', ok: false, detail: 'Error: $e', elapsed: '${sw.elapsedMilliseconds} ms'));
+      _addResult(_TestResult(name: 'HAR — $type', ok: false, detail: 'Error: $e', elapsed: '${sw.elapsedMilliseconds} ms'));
     } finally {
       if (mounted && !_cancelRequested) setState(() => _testRunning = false);
     }
@@ -1486,7 +1482,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       final window = List.generate(100, (i) {
         if (i >= 44 && i <= 56) {
           final phase = (i - 44) / 12.0; // 0..1
-          final peak = 6.0 * sin(phase * pi); // clean half-sine, 0â†’6â†’0
+          final peak = 6.0 * sin(phase * pi); // clean half-sine, 0→6→0
           return [peak, peak * 0.3, 1.0 + peak * 0.5, 0.5, 0.3, 0.2];
         }
         // Post-fall immobility (last 25 samples very still)
@@ -1497,7 +1493,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       sw.stop();
       if (_cancelRequested) return;
       _addResult(_TestResult(
-        name: 'Fall detector â€” caída simulada (pico 6g)',
+        name: 'Fall detector — caída simulada (pico 6g)',
         ok: result.isFall,
         detail: 'Etapa activada: ${result.triggeredStage}\n'
             'SVM peak:       ${result.svmPeak.toStringAsFixed(3)} g\n'
@@ -1509,7 +1505,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     } catch (e) {
       sw.stop();
       _addResult(_TestResult(
-        name: 'Fall detector â€” caída simulada (pico 6g)',
+        name: 'Fall detector — caída simulada (pico 6g)',
         ok: false,
         detail: 'Excepción en inferencia CNN: $e\n'
             'Stage 1 (SVM) puede haber pasado pero CNN lanzó error.',
@@ -1536,7 +1532,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               'this_week:   ${vp.thisWeek}\n'
               'streak_days: ${vp.streakDays}\n'
               'level:       ${vp.level}'
-            : 'Sin respuesta â€” backend no alcanzable',
+            : 'Sin respuesta — backend no alcanzable',
         elapsed: '${sw.elapsedMilliseconds} ms',
       ));
       if (ok && mounted) {
@@ -1615,8 +1611,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         name: 'DELETE /users/{id}/data',
         ok: ok,
         detail: ok
-            ? '204 No Content â€” todos los datos borrados en cascada'
-            : 'Sin respuesta â€” backend no alcanzable',
+            ? '204 No Content — todos los datos borrados en cascada'
+            : 'Sin respuesta — backend no alcanzable',
         elapsed: '${sw.elapsedMilliseconds} ms',
       ));
       if (ok && mounted) {
@@ -1646,7 +1642,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       sw.stop();
       if (_cancelRequested) return;
       _addResult(_TestResult(
-        name: 'Fall detector â€” caminar normal (sin caída)',
+        name: 'Fall detector — caminar normal (sin caída)',
         ok: !result.isFall,
         detail: 'Etapa activada: ${result.triggeredStage}\n'
             'SVM peak:       ${result.svmPeak.toStringAsFixed(3)} g\n'

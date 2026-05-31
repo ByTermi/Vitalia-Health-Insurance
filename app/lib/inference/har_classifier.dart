@@ -2,17 +2,18 @@ import 'dart:io';
 import 'dart:math';
 import 'package:tflite_flutter/tflite_flutter.dart';
 
-// Order MUST match the training class order (notebook 03):
-// [static, walking, running, cycling, upstairs, downstairs]
-// sitting + standing are merged into static (index 0).
+// Order MUST match the training class order (notebook 03_har_ut_pocket_kaggle):
+// [stationary, walking, running, cycling, stairs]
+// sitting + standing are merged into stationary (index 0);
+// upstairs + downstairs are merged into stairs (index 4) — they are nearly
+// indistinguishable from a single pocket accelerometer.
 // The model outputs an index into this list; reordering breaks the mapping.
 enum Activity {
   stationary, // index 0 — merged sitting + standing (0 VitaPoints)
   walking,    // index 1
   running,    // index 2
   cycling,    // index 3
-  upstairs,   // index 4
-  downstairs, // index 5
+  stairs,     // index 4 — merged upstairs + downstairs
 }
 
 const _activityNames = {
@@ -20,8 +21,7 @@ const _activityNames = {
   Activity.walking: 'Walking',
   Activity.running: 'Running',
   Activity.cycling: 'Cycling',
-  Activity.upstairs: 'Upstairs',
-  Activity.downstairs: 'Downstairs',
+  Activity.stairs: 'Stairs',
 };
 
 const _vitaPointsPerMinute = {
@@ -29,8 +29,7 @@ const _vitaPointsPerMinute = {
   Activity.walking: 2,
   Activity.running: 5,
   Activity.cycling: 4,
-  Activity.upstairs: 3,
-  Activity.downstairs: 2,
+  Activity.stairs: 3,
 };
 
 extension ActivityInfo on Activity {
@@ -59,7 +58,7 @@ class HarClassifier {
   static const int channels = 6;
 
   // Below this mean linear-accel SVM the phone is stationary.
-  // Upstairs/walking/running always exceed 0.1 g mean; truly still → <0.03 g.
+  // Stairs/walking/running always exceed 0.1 g mean; truly still → <0.03 g.
   static const double _staticSvmThreshold = 0.05;
 
   // Temporal smoothing: majority vote over the last N windows (see Sync 2 for N choice).
@@ -71,16 +70,22 @@ class HarClassifier {
   bool _loaded = false;
 
   Future<void> load({String? overridePath}) async {
+    final options = InterpreterOptions()..threads = 2;
+    if (overridePath != null) {
+      try {
+        final candidate = await Interpreter.fromFile(File(overridePath), options: options);
+        final outShape = candidate.getOutputTensor(0).shape;
+        if (outShape.length >= 2 && outShape.last == Activity.values.length) {
+          _interpreter = candidate;
+          _loaded = true;
+          return;
+        }
+        // Shape mismatch — discard stale OTA model, fall through to bundled asset.
+        candidate.close();
+      } catch (_) {}
+    }
     try {
-      final options = InterpreterOptions()..threads = 2;
-      if (overridePath != null) {
-        _interpreter = await Interpreter.fromFile(
-          File(overridePath),
-          options: options,
-        );
-      } else {
-        _interpreter = await Interpreter.fromAsset(_modelPath, options: options);
-      }
+      _interpreter = await Interpreter.fromAsset(_modelPath, options: options);
       _loaded = true;
     } catch (_) {
       _loaded = false;
@@ -95,7 +100,7 @@ class HarClassifier {
 
     // Compute mean linear-accel SVM over the window (channels 0-2 = gravity-removed accel).
     // When the phone is completely still Android's TYPE_LINEAR_ACCELERATION can drift
-    // slightly, producing a near-zero but repetitive signal the CNN mis-reads as "upstairs".
+    // slightly, producing a near-zero but repetitive signal the CNN mis-reads as "stairs".
     // Guard: if mean SVM < threshold the window is stationary → clamp to sitting/standing.
     double svmSum = 0.0;
     for (final sample in window) {
