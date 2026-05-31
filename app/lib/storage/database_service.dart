@@ -112,7 +112,7 @@ class DatabaseService {
     final dbPath = p.join(await getDatabasesPath(), 'vitalia.db');
     _db = await openDatabase(
       dbPath,
-      version: 2,
+      version: 3,
       onCreate: (db, _) async {
         await db.execute('''
           CREATE TABLE sensor_readings (
@@ -136,11 +136,39 @@ class DatabaseService {
         ''');
         await db.execute('CREATE INDEX idx_ts ON sensor_readings(ts)');
         await _createProfilesTable(db);
+        await _createSettingsTable(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) await _createProfilesTable(db);
+        if (oldVersion < 3) await _createSettingsTable(db);
       },
     );
+  }
+
+  static Future<void> _createSettingsTable(Database db) async {
+    await db.execute(
+        'CREATE TABLE settings (key TEXT PRIMARY KEY, value REAL)');
+  }
+
+  // Threshold settings — key→value (e.g. cnn_balanced, svm_threshold, stairs_alt).
+  Future<double?> getSetting(String key) async {
+    final rows = await _db?.query('settings',
+            where: 'key = ?', whereArgs: [key], limit: 1) ??
+        [];
+    if (rows.isEmpty) return null;
+    return (rows.first['value'] as num?)?.toDouble();
+  }
+
+  Future<void> setSetting(String key, double value) async {
+    await _db?.insert('settings', {'key': key, 'value': value},
+        conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<Map<String, double>> getAllSettings() async {
+    final rows = await _db?.query('settings') ?? [];
+    return {
+      for (final r in rows) r['key'] as String: (r['value'] as num).toDouble(),
+    };
   }
 
   static Future<void> _createProfilesTable(Database db) async {

@@ -22,7 +22,8 @@ enum DetectionMode { conservative, balanced, strict }
 
 // balanced/strict lowered -0.05; altitude gate + still→motion blanking + debounce
 // compensate the marginal FP increase while recall improves.
-const _thresholds = {
+// Defaults — used when SQLite has no saved value (see DatabaseService settings table).
+const Map<DetectionMode, double> defaultThresholds = {
   DetectionMode.conservative: 0.55, // 65+ segment: maximise recall
   DetectionMode.balanced: 0.70,
   DetectionMode.strict: 0.85,
@@ -32,9 +33,15 @@ class FallDetector {
   static const String _modelPath = 'assets/models/fall_model_int8.tflite';
   static const int windowSize = 100;
   static const int channels = 6;
-  static const double svmThreshold = 3.0;
+  static const double defaultSvmThreshold = 3.0;
   static const double _immobilityStdThreshold = 0.1;
   static const int _immobilitySamples = 25;
+
+  // Mutable, user-tunable thresholds (persisted in SQLite, defaults above).
+  final Map<DetectionMode, double> cnnThresholds = Map.of(defaultThresholds);
+  double svmThreshold = defaultSvmThreshold;
+
+  void setCnnThreshold(DetectionMode m, double v) => cnnThresholds[m] = v;
 
   // Altitude gate (Stage 2.5) — calibrate in Sync 3.
   // If CNN fires but neither condition is met, escalation stops at stage 2 (no alert).
@@ -67,7 +74,7 @@ class FallDetector {
   }
 
   bool get isLoaded => _loaded;
-  double get threshold => _thresholds[mode]!;
+  double get threshold => cnnThresholds[mode]!;
 
   // [altitudeDeltaM] : net altitude change (m) over the fall window, from AltitudeService.
   //                    Negative = person dropped. Null = no altitude data → gate bypassed.
