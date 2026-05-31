@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vitalia Health Insurance — Guion y explicación por diapositiva</title>
+<style>
+:root{
+  --bg:#FAFAF8;--surface:#ffffff;--ink:#1a1a1a;--muted:#6b7280;--faint:#9ca3af;
+  --line:#e7e4dd;
+  --blue:#2563eb;--green:#059669;--amber:#b45309;--red:#dc2626;--purple:#7c3aed;
+  --blue-bg:#eff4ff;--green-bg:#ecfdf5;--amber-bg:#fef6ec;--red-bg:#fdecec;--purple-bg:#f3effd;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6;-webkit-font-smoothing:antialiased}
+
+.wrap{max-width:900px;margin:0 auto;padding:clamp(28px,5vw,64px) clamp(20px,4vw,40px)}
+
+header.doc{text-align:center;padding-bottom:36px;border-bottom:2px solid var(--line);margin-bottom:40px}
+header.doc .tag{font-size:0.78rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--blue)}
+header.doc h1{font-size:clamp(1.8rem,4vw,2.8rem);font-weight:800;line-height:1.1;letter-spacing:-.02em;margin:12px 0}
+header.doc p{color:var(--muted);max-width:64ch;margin:0 auto;font-size:1.05rem}
+
+.legend{display:flex;flex-wrap:wrap;gap:10px 20px;justify-content:center;margin-top:20px;font-size:0.85rem;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.dot{width:12px;height:12px;border-radius:3px;display:inline-block}
+.dot.b{background:var(--blue)}.dot.g{background:var(--green)}.dot.a{background:var(--amber)}
+
+/* honesty banner */
+.honesty{background:var(--amber-bg);border:1px solid #f0d9b5;border-radius:14px;padding:18px 22px;margin-bottom:40px}
+.honesty h2{font-size:0.78rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);margin-bottom:10px}
+.honesty ul{padding-left:20px;font-size:0.95rem}
+.honesty li{margin-bottom:6px}
+
+.toc{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:24px 28px;margin-bottom:48px;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+.toc h2{font-size:0.82rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
+.toc ol{list-style:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:6px 24px}
+.toc li{font-size:0.92rem}
+.toc a{color:var(--ink);text-decoration:none;display:flex;gap:10px;padding:4px 0;border-radius:6px}
+.toc a:hover{color:var(--blue)}
+.toc a .n{color:var(--blue);font-weight:700;flex:0 0 26px}
+.toc .deep{color:var(--purple);font-weight:700;font-size:0.7rem;margin-left:auto;letter-spacing:.04em}
+
+.s{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:clamp(22px,3.5vw,40px);margin-bottom:28px;box-shadow:0 2px 10px rgba(0,0,0,.05);scroll-margin-top:20px}
+.s.deepdive{border:2px solid var(--purple);box-shadow:0 4px 18px rgba(124,58,237,.1)}
+.s-head{display:flex;align-items:baseline;gap:16px;border-bottom:1px solid var(--line);padding-bottom:16px;margin-bottom:20px}
+.s-num{flex:0 0 auto;width:46px;height:46px;border-radius:12px;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:800}
+.s-head .meta{flex:1}
+.s-head .meta .kicker{font-size:0.72rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--blue)}
+.s-head .meta h3{font-size:clamp(1.2rem,2.4vw,1.7rem);font-weight:800;line-height:1.15;letter-spacing:-.01em}
+.deeptag{font-size:0.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--purple);padding:5px 12px;border-radius:999px;align-self:center}
+
+.block{margin-bottom:18px}
+.block:last-child{margin-bottom:0}
+.label{font-size:0.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-bottom:6px}
+.block p{color:var(--ink);font-size:1rem}
+.block ul{margin:6px 0 0 0;padding-left:20px}
+.block li{margin-bottom:6px;font-size:0.98rem}
+.block strong{color:var(--ink)}
+em{color:var(--muted)}
+
+.say{background:var(--blue-bg);border-left:4px solid var(--blue);border-radius:0 10px 10px 0;padding:14px 18px;font-size:1.02rem;color:var(--ink)}
+.say::before{content:"🎤 ";}
+.why{background:var(--green-bg);border-left:4px solid var(--green);border-radius:0 10px 10px 0;padding:14px 18px}
+.qa{background:var(--amber-bg);border-left:4px solid var(--amber);border-radius:0 10px 10px 0;padding:14px 18px;margin-top:8px}
+.qa .q{font-weight:700;color:var(--amber)}
+.warn{background:var(--red-bg);border-left:4px solid var(--red);border-radius:0 10px 10px 0;padding:14px 18px}
+.warn::before{content:"⚠ ";font-weight:700;color:var(--red)}
+
+.pill{display:inline-block;background:var(--blue-bg);color:var(--blue);border-radius:999px;padding:3px 12px;font-size:0.82rem;font-weight:700;margin:2px 4px 2px 0}
+
+/* data table */
+table{width:100%;border-collapse:collapse;margin-top:8px;font-size:0.92rem}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line)}
+th{font-size:0.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+tr.total td{font-weight:800;border-top:2px solid var(--ink);border-bottom:none}
+tr.total td.num{color:var(--green)}
+td .muted{color:var(--muted);font-size:0.85rem}
+
+/* code / arch block */
+.code{background:#1a1a1a;color:#e7e4dd;border-radius:12px;padding:18px 20px;font-family:'SF Mono',Consolas,monospace;font-size:0.85rem;line-height:1.5;overflow-x:auto;margin-top:8px}
+.code .c{color:#7c8aa3}
+.code .k{color:#79c0ff}
+.code .v{color:#7ee787}
+.code .d{color:#ffa657}
+
+.arch{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.arch .lyr{display:flex;align-items:center;gap:12px;background:var(--blue-bg);border-radius:10px;padding:10px 16px;font-size:0.92rem}
+.arch .lyr .stage{flex:0 0 26px;height:26px;border-radius:7px;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.8rem}
+.arch .lyr .desc{flex:1}
+.arch .lyr .shp{font-family:monospace;color:var(--muted);font-size:0.84rem}
+.arch .lyr.out{background:var(--green-bg)}.arch .lyr.out .stage{background:var(--green)}
+.arch .lyr.in{background:var(--amber-bg)}.arch .lyr.in .stage{background:var(--amber)}
+
+.top{display:block;text-align:right;font-size:0.82rem;color:var(--faint);text-decoration:none;margin-top:10px}
+.top:hover{color:var(--blue)}
+footer{text-align:center;color:var(--faint);font-size:0.85rem;padding:40px 0 10px;border-top:1px solid var(--line);margin-top:20px}
+
+.color-green .s-num{background:var(--green)}
+.color-amber .s-num{background:var(--amber)}
+.color-red .s-num{background:var(--red)}
+.color-purple .s-num{background:var(--purple)}
+.color-green .kicker{color:var(--green)}.color-amber .kicker{color:var(--amber)}
+.color-red .kicker{color:var(--red)}.color-purple .kicker{color:var(--purple)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="doc">
+  <div class="tag">Caso 06 · Vitalia Health Insurance</div>
+  <h1>Guion y explicación por diapositiva</h1>
+  <p>Qué muestra cada diapositiva, qué decir, por qué cada dato es defendible y qué responder al jurado. Las diapositivas de <strong>modelo</strong> (8–10) y <strong>coste</strong> (16–17) llevan un análisis técnico ampliado.</p>
+  <div class="legend">
+    <span><span class="dot b"></span>🎤 Qué decir (guion literal)</span>
+    <span><span class="dot g"></span>Por qué / detalle técnico</span>
+    <span><span class="dot a"></span>Si preguntan (Q&amp;A jurado)</span>
+  </div>
+</header>
+
+<div class="honesty">
+  <h2>⚠ Honestidad de cifras — léelo antes de defender</h2>
+  <ul>
+    <li><strong>≥85% precisión (slide 8)</strong> es un <strong>objetivo</strong>, no una métrica medida. La validación LOSO completa no se ejecutó por tiempo.</li>
+    <li>El <strong>0,78 macro-F1</strong> que aparece en los metadatos del modelo es un <strong>smoketest</strong> con solo 5 sujetos — sanity-check, no validación final.</li>
+    <li><strong>50.000 € (slide 17)</strong> es la variante <em>lean</em> MVP-a-producción. El documento de coste tiene también un escenario completo de <strong>~84.000 €</strong> con QA exhaustivo y certificación.</li>
+    <li>Cifras de negocio (35% fraude · 9,18 M€ · 2% incidencia · 30% intervención) son <strong>estimaciones con supuestos</strong>. Defiende el ratio y la lógica, no el decimal exacto.</li>
+  </ul>
+</div>
+
+<nav class="toc">
+  <h2>Índice — 18 diapositivas</h2>
+  <ol>
+    <li><a href="#d1"><span class="n">01</span> Portada</a></li>
+    <li><a href="#d2"><span class="n">02</span> El problema</a></li>
+    <li><a href="#d3"><span class="n">03</span> La idea</a></li>
+    <li><a href="#d4"><span class="n">04</span> Qué reconoce</a></li>
+    <li><a href="#d5"><span class="n">05</span> El MVP funciona</a></li>
+    <li><a href="#d6"><span class="n">06</span> Datos · Actividad</a></li>
+    <li><a href="#d7"><span class="n">07</span> Datos · Caídas</a></li>
+    <li><a href="#d8"><span class="n">08</span> El modelo<span class="deep">DEEP</span></a></li>
+    <li><a href="#d9"><span class="n">09</span> Por qué CNN<span class="deep">DEEP</span></a></li>
+    <li><a href="#d10"><span class="n">10</span> Rendimiento<span class="deep">DEEP</span></a></li>
+    <li><a href="#d11"><span class="n">11</span> Modelo de caídas<span class="deep">DEEP</span></a></li>
+    <li><a href="#d12"><span class="n">12</span> Caídas · Resultados</a></li>
+    <li><a href="#d13"><span class="n">13</span> Caídas · Cómo</a></li>
+    <li><a href="#d14"><span class="n">14</span> Sensibilidad por perfil</a></li>
+    <li><a href="#d15"><span class="n">15</span> Privacidad</a></li>
+    <li><a href="#d16"><span class="n">16</span> Arquitectura</a></li>
+    <li><a href="#d17"><span class="n">17</span> Coste · Construir<span class="deep">DEEP</span></a></li>
+    <li><a href="#d18"><span class="n">18</span> Coste · Operar + ROI<span class="deep">DEEP</span></a></li>
+    <li><a href="#d19"><span class="n">19</span> Cierre</a></li>
+  </ol>
+</nav>
+
+<!-- 1 -->
+<section class="s" id="d1">
+  <div class="s-head"><div class="s-num">1</div><div class="meta"><div class="kicker">Portada</div><h3>Detecta tu actividad. Detecta tus caídas.</h3></div></div>
+  <div class="block"><div class="label">Qué se ve</div><p>Título, lema "IA dentro del móvil, sin enviar datos a ningún sitio" y tres badges: <span class="pill">IA en el móvil</span> <span class="pill">Caídas 65+</span> <span class="pill">Datos en Europa</span>. Equipo Íñigo + Jaime.</p></div>
+  <div class="block"><div class="label">Qué decir</div><div class="say">"Sistema que reconoce qué ejercicio haces y detecta si te caes — todo dentro del propio móvil, sin que tus datos salgan nunca del dispositivo."</div></div>
+  <div class="block"><div class="label">Idea clave</div><p>Tres badges = tres ejes de venta: <strong>on-device</strong> (técnico), <strong>caídas 65+</strong> (encaja el enunciado), <strong>datos en Europa</strong> (RGPD). Anclan el resto de la charla — cada slide posterior recoge uno.</p></div>
+</section>
+
+<!-- 2 -->
+<section class="s color-red" id="d2">
+  <div class="s-head"><div class="s-num">2</div><div class="meta"><div class="kicker">El problema</div><h3>35% de los VitaPoints son fraude</h3></div></div>
+  <div class="block"><div class="label">Qué se ve</div><p>Cifra grande <strong>35%</strong>. Subtexto: 180.000 asegurados declaran su actividad a mano y hoy no hay forma de verificarla.</p></div>
+  <div class="block"><div class="label">Qué decir</div><div class="say">"Hoy VitaPoints va por honor: el usuario dice cuánto se movió. Sin verificación, una parte grande de los puntos premia actividad que no ocurrió — coste para Vitalia, sin valor de salud."</div></div>
+  <div class="block"><div class="label">Por qué importa</div><div class="why"><p>Plantea el dolor en € y confianza antes de la solución. El 35% es estimación de marco — preséntalo como "orden de magnitud del problema de auto-declaración", no como dato medido por nosotros.</p></div></div>
+  <div class="block"><div class="label">Si preguntan</div><div class="qa"><p class="q">¿De dónde sale el 35%?</p><p>Supuesto del caso para dimensionar. El punto defendible: la auto-declaración no verificable <em>siempre</em> degrada el programa. Nuestro sistema elimina la vía de fraude, sea cual sea el porcentaje real.</p></div></div>
+</section>
+
+<!-- 3 -->
+<section class="s" id="d3">
+  <div class="s-head"><div class="s-num">3</div><div class="meta"><div class="kicker">La solución · MVP</div><h3>Todo ocurre en el móvil</h3></div></div>
+  <div class="block"><div class="label">Qué se ve</div><p>Flujo de 3 cajas: <strong>Sensores</strong> → <strong>IA on-device</strong> → <strong>Servidor (Europa)</strong>. La flecha al servidor dice "solo el resultado".</p></div>
+  <div class="block"><div class="label">Qué decir</div><div class="say">"El móvil lee los sensores, la IA clasifica ahí mismo, y al servidor solo viaja el resultado — 'caminó 15 min'. La señal cruda nunca sale."</div></div>
+  <div class="block"><div class="label">Idea clave</div><p>Resuelve fraude (no se puede falsear un sensor real) <strong>y</strong> privacidad (dato bruto no sale) en una sola arquitectura. "Sin internet · Sin fraude · Datos brutos nunca salen."</p></div>
+</section>
+
+<!-- 4 -->
+<section class="s" id="d4">
+  <div class="s-head"><div class="s-num">4</div><div class="meta"><div class="kicker">Qué reconoce</div><h3>5 actividades + caídas</h3></div></div>
+  <div class="block"><div class="label">Qué se ve</div><p>Estático (0 VP/min) · Caminando (2) · Corriendo (5) · Escaleras ↑ (3) · Escaleras ↓ (2) · Caída (emergencia).</p></div>
+  <div class="block"><div class="label">Qué decir</div><div class="say">"Cinco actividades cubren el día normal, cada una con recompensa VitaPoints proporcional al esfuerzo. La caída es categoría aparte: no da puntos, dispara emergencia."</div></div>
+  <div class="block"><div class="label">Por qué estas 5 (y no más)</div><div class="why"><p>Son las clases robustas y separables con sensores de smartphone. <strong>Quitamos el ciclismo a propósito</strong>: con datos de móvil se confundía con estático/caminar y bajaba la precisión global (los metadatos del modelo registran <code>cycling_trained: false</code>). Decisión consciente: 5 clases sólidas &gt; 6 dudosas.</p></div></div>
+  <div class="block"><div class="label">Si preguntan</div><div class="qa"><p class="q">¿Por qué separar subir y bajar escaleras?</p><p>Tienen firma de aceleración vertical distinta y gasto calórico distinto → VP distintos (3 vs 2). El modelo las distingue, y añadimos un <em>gate</em> de altitud (barómetro) como apoyo para reforzar esa separación.</p></div></div>
+</section>
+
+<!-- 5 -->
+<section class="s color-green" id="d5">
+  <div class="s-head"><div class="s-num">5</div><div class="meta"><div class="kicker">El prototipo</div><h3>Demo real, no maqueta</h3></div></div>
+  <div class="block"><div class="label">Qué se ve</div><p>Trío: <strong>106 KB</strong> tamaño modelo · <strong>&lt;1 ms</strong> por clasificación · <strong>&lt;1%</strong> batería/hora.</p></div>
+  <div class="block"><div class="label">Qué decir</div><div class="say">"Esto ya corre en un Android real. 106 KB — como tres fotos. Menos de un milisegundo por predicción. Y menos del 1% de batería por hora."</div></div>
+  <div class="block"><div class="label">Idea clave</div><p>Refuta el "¿pero funciona de verdad?". Tres números que importan al jurado: cabe, es instantáneo, no mata batería. El detalle técnico de cómo se logra está en la slide 10. Apóyalo enseñando la app si hay demo en vivo.</p></div>
+</section>
+
+<!-- 6 -->
+<section class="s" id="d6">
+  <div class="s-head"><div class="s-num">6</div><div class="meta"><div class="kicker">Datos · Actividad</div><h3>54 personas reales entrenando el modelo</h3></div></div>
+  <div class="block"><div class="label">Qué se ve</div><p>Cifra <strong>54</strong> + chips: UCI HAR, MotionSense, PAMAP2. "Datasets públicos, reconocidos, grabados con smartphones reales."</p></div>
+  <div class="block"><div class="label">Qué decir</div><div class="say">"No inventamos datos. 54 personas de tres datasets públicos y citables. UCI HAR aporta el patrón base, MotionSense varía dónde llevas el móvil, PAMAP2 mete carrera."</div></div>
+  <div class="block"><div class="label">Por qué cada uno</div><div class="why"><ul><li><strong>UCI HAR</strong> — 30 sujetos, smartphone en cintura, 50 Hz. Núcleo de actividades.</li><li><strong>MotionSense</strong> — 24 sujetos, móvil en bolsillo. Da invarianza de colocación.</li><li><strong>PAMAP2</strong> — aporta correr/escaleras; resampleado de 100→50 Hz para alinear con el resto.</li></ul><p>Total entrenamiento: <strong>29.894 ventanas</strong> de 2,56 s.</p></div></div>
+  <div class="block"><div class="label">Si preguntan</div><div class="qa"><p class="q">¿Y la fuga entre sujetos?</p><p>El protocolo correcto es validación <em>por sujeto</em> (LOSO): nadie aparece a la vez en train y test. <strong>Sé honesto</strong>: la LOSO completa quedó pendiente por tiempo; hicimos un smoketest de 5 sujetos (~0,78 macro-F1) como sanity-check. El ≥85% es el objetivo de diseño.</p></div></div>
+</section>
+
+<!-- 7 -->
+<section class="s color-green" id="d7">
+  <div class="s-head"><div class="s-num">7</div><div class="meta"><div class="kicker">Datos · Caídas</div><h3>15 ancianos reales de 60–75 años</h3></div></div>
+  <div class="block"><div class="label">Qué se ve</div><p>Cifra <strong>15</strong>. Dataset <strong>SisFall</strong> — único que cubre el segmento 65+ del enunciado. 15 tipos de caída: resbalones, tropiezos, síncopes.</p></div>
+  <div class="block"><div class="label">Qué decir</div><div class="say">"El enunciado pide cubrir mayores. SisFall es el único dataset de caídas con ancianos reales — no actores jóvenes simulando. 15 tipos de caída distintos."</div></div>
+  <div class="block"><div class="label">Por qué importa</div><div class="why"><p>La biomecánica de caída de un mayor difiere de la de un joven (velocidad de impacto, recuperación). Entrenar con población objetivo real es lo que hace defendible el "caídas 65+" de la portada.</p></div></div>
+</section>
+
+<!-- ===================== DEEP DIVE: MODELO ===================== -->
+
+<!-- 8 -->
+<section class="s deepdive" id="d8">
+  <div class="s-head"><div class="s-num">8</div><div class="meta"><div class="kicker">El modelo de IA</div><h3>Red neuronal para móviles — 1D-CNN</h3></div><div class="deeptag">Deep dive</div></div>
+
+  <div class="block"><div class="label">Qué se ve</div><p>Flujo: <strong>2,56 s de movimiento</strong> → <strong>CNN 1D (3 capas)</strong> → <strong>actividad clasificada</strong>. KPIs: ≥85% precisión, "validado por sujeto".</p></div>
+
+  <div class="block"><div class="label">Qué decir</div><div class="say">"Tomamos 2,56 segundos de movimiento — 128 muestras a 50 Hz por 6 canales — y una red convolucional 1D extrae la firma temporal del gesto y la clasifica en una de las cinco actividades. Diseñada para ≥85% de acierto medido persona a persona."</div></div>
+
+  <div class="block"><div class="label">La entrada exacta — qué "ve" el modelo</div><div class="why">
+    <p>Cada predicción parte de un tensor <strong>(128, 6)</strong>: 128 instantes × 6 señales.</p>
+    <table>
+      <tr><th>Canal</th><th>Señal</th><th>Sensor</th></tr>
+      <tr><td><code>lax, lay, laz</code></td><td>Aceleración lineal X/Y/Z</td><td>Acelerómetro (sin gravedad)</td></tr>
+      <tr><td><code>gx, gy, gz</code></td><td>Velocidad angular X/Y/Z</td><td>Giroscopio</td></tr>
+    </table>
+    <p style="margin-top:10px">Usar <strong>aceleración lineal</strong> (gravedad ya restada) + giroscopio hace al modelo más robusto a la orientación del teléfono que usar la aceleración bruta.</p>
+  </div></div>
+
+  <div class="block"><div class="label">Por qué 2,56 s / 128 muestras / 50 % solape</div><div class="why"><ul>
+    <li><strong>2,56 s</strong> contiene 2–3 ciclos de marcha completos → el modelo ve el patrón repetido, no un fotograma aislado.</li>
+    <li><strong>128 = 2⁷</strong>, potencia de 2, eficiente para las operaciones de convolución/pooling.</li>
+    <li><strong>50 Hz</strong>: suficiente para movimiento humano (frecuencias &lt;25 Hz, criterio de Nyquist) y común a todos los datasets tras resampleo.</li>
+    <li><strong>50 % de solape</strong> entre ventanas dobla los ejemplos de entrenamiento y suaviza las transiciones entre actividades.</li>
+  </ul></div></div>
+
+  <div class="block"><div class="label">Arquitectura real (3 bloques convolucionales)</div>
+    <div class="arch">
+      <div class="lyr in"><span class="stage">IN</span><span class="desc">Entrada — ventana de sensores</span><span class="shp">(128, 6)</span></div>
+      <div class="lyr"><span class="stage">B1</span><span class="desc">3× Conv1D(64) + BatchNorm → MaxPool</span><span class="shp">→ (64, 64)</span></div>
+      <div class="lyr"><span class="stage">B2</span><span class="desc">3× Conv1D(128) + BatchNorm → MaxPool</span><span class="shp">→ (32, 128)</span></div>
+      <div class="lyr"><span class="stage">B3</span><span class="desc">4× Conv1D(256) + BatchNorm → GlobalAveragePooling</span><span class="shp">→ (256)</span></div>
+      <div class="lyr"><span class="stage">FC</span><span class="desc">Dense(128) + Dropout(0,4)</span><span class="shp">→ (128)</span></div>
+      <div class="lyr out"><span class="stage">OUT</span><span class="desc">Dense(5) + Softmax → probabilidad por clase</span><span class="shp">→ (5)</span></div>
+    </div>
+    <p style="margin-top:10px;font-size:0.92rem;color:var(--muted)">Filtros crecientes 64→128→256 = de detalles finos (un pico) a patrones largos (un ciclo de marcha). <strong>BatchNorm</strong> estabiliza el entrenamiento; <strong>Dropout 0,4</strong> evita el sobreajuste; <strong>GlobalAveragePooling</strong> en vez de Flatten reduce drásticamente los parámetros → modelo más pequeño.</p>
+  </div>
+
+  <div class="block"><div class="label">Estado real de la validación</div><div class="warn"><p>El <strong>≥85% es objetivo de diseño</strong>, no medido. La validación LOSO completa no se ejecutó por falta de tiempo. El número que aparece en los metadatos (<code>0,78 macro-F1</code>) es un <strong>smoketest de 5 sujetos</strong> — sirve como sanity-check de que el pipeline funciona, no como resultado final. No lo presentes como métrica validada.</p></div></div>
+
+  <div class="block"><div class="label">Si preguntan</div>
+    <div class="qa"><p class="q">¿Qué precisión real tenéis?</p><p>"Nuestro objetivo es ≥85% en validación por sujeto. El sanity-check inicial con 5 sujetos da ~0,78 macro-F1; la LOSO completa sobre los 54 sujetos es el siguiente paso — quedó fuera por el tiempo de la semana."</p></div>
+    <div class="qa"><p class="q">¿Por qué macro-F1 y no accuracy?</p><p>Las clases están desbalanceadas (mucho 'estático', poco 'escaleras'). El macro-F1 pondera todas las clases por igual → no premia un modelo que solo acierte la clase mayoritaria.</p></div>
+  </div>
+</section>
+
+<!-- 9 -->
+<section class="s deepdive color-purple" id="d9">
+  <div class="s-head"><div class="s-num">9</div><div class="meta"><div class="kicker">Por qué esta arquitectura</div><h3>Probamos 5. Ganó la 1D-CNN</h3></div><div class="deeptag">Deep dive</div></div>
+
+  <div class="block"><div class="label">Qué se ve</div><p>Descartados (tachados): Clásico estadístico, RNN, CNN+RNN, Transformer. Ganador: <strong>Red neuronal 1D</strong>. "Mejor equilibrio precisión / tamaño / velocidad."</p></div>
+
+  <div class="block"><div class="label">Qué decir</div><div class="say">"No elegimos CNN por moda. Comparamos cinco enfoques con el mismo dato y la misma validación. La 1D-CNN dio el mejor compromiso entre acierto, tamaño en disco y velocidad en un móvil real — que es lo que el caso pide."</div></div>
+
+  <div class="block"><div class="label">Las 5 alternativas y por qué cae cada una</div><div class="why">
+    <table>
+      <tr><th>Enfoque</th><th>Qué es</th><th>Por qué se descarta</th></tr>
+      <tr><td><strong>Clásico</strong></td><td>RF / SVM sobre features manuales (media, std, FFT…)</td><td>Baseline honesto, pero techo de precisión más bajo y requiere ingeniería manual de features frágil.</td></tr>
+      <tr><td><strong>RNN / LSTM</strong></td><td>Red recurrente sobre la serie temporal</td><td>Buena con secuencias, pero más lenta (cómputo secuencial) y pesada en el móvil.</td></tr>
+      <tr><td><strong>CNN + RNN</strong></td><td>Conv para features + LSTM para tiempo</td><td>Mejora marginal sobre CNN sola a costa de más parámetros y latencia.</td></tr>
+      <tr><td><strong>Transformer</strong></td><td>Atención sobre la secuencia</td><td>Sobredimensionado para 128 muestras; muchos parámetros, hambriento de datos, lento sin GPU.</td></tr>
+      <tr><td><strong>1D-CNN ✓</strong></td><td>Convoluciones sobre el eje temporal</td><td><strong>Gana</strong>: paraleliza, pocos parámetros, rapidísima, y la convolución encaja con señales periódicas como la marcha.</td></tr>
+    </table>
+  </div></div>
+
+  <div class="block"><div class="label">Por qué la convolución encaja con HAR</div><div class="why"><p>Una actividad física es un <strong>patrón local que se repite</strong> (un paso, una zancada). La convolución 1D está hecha para detectar patrones locales <em>invariantes a la posición</em> dentro de la ventana: da igual en qué instante de los 2,56 s empiece el paso, el mismo filtro lo detecta. Eso es exactamente lo que necesita HAR — y por eso una CNN modesta bate a arquitecturas más caras.</p></div></div>
+
+  <div class="block"><div class="label">Si preguntan</div>
+    <div class="qa"><p class="q">¿No es mejor un Transformer, que es el estado del arte?</p><p>"En texto y secuencias largas, sí. Aquí la secuencia es de 128 pasos y el patrón es local y periódico — justo el caso fuerte de la convolución. El Transformer aportaría una mejora marginal de precisión a cambio de mucho más tamaño y latencia, lo contrario de lo que pide un modelo on-device."</p></div>
+    <div class="qa"><p class="q">¿Comparasteis con las mismas condiciones?</p><p>Mismo preprocesado, misma partición, mismas métricas. La comparación es la justificación metodológica, no una corazonada.</p></div>
+  </div>
+</section>
+
+<!-- 10 -->
+<section class="s deepdive" id="d10">
+  <div class="s-head"><div class="s-num">10</div><div class="meta"><div class="kicker">Rendimiento on-device</div><h3>Dos modelos, sin que se note</h3></div><div class="deeptag">Deep dive</div></div>
+
+  <div class="block"><div class="label">Qué se ve</div><p>Trío: <strong>106 KB</strong> modelo actividad · <strong>22 KB</strong> modelo caídas · <strong>funciona sin internet</strong> (modo avión).</p></div>
+
+  <div class="block"><div class="label">Qué decir</div><div class="say">"Dos modelos especializados, 128 KB en total. Funcionan offline, incluso en modo avión. Toda la inteligencia vive en el teléfono — el servidor no participa en la inferencia."</div></div>
+
+  <div class="block"><div class="label">De dónde sale el 106 KB — la cuantización</div><div class="why">
+    <p>El tamaño es resultado de exportar a <strong>TFLite con cuantización int8</strong>: los pesos pasan de float32 (32 bits) a enteros de 8 bits → <strong>~4× menos tamaño</strong> y enteros que el procesador del móvil ejecuta más rápido que floats.</p>
+    <table>
+      <tr><th>Variante exportada</th><th class="num">Tamaño</th><th>Uso</th></tr>
+      <tr><td>HAR int8 (producción)</td><td class="num">106 KB</td><td>El que va en la app</td></tr>
+      <tr><td>HAR fp16 (media precisión)</td><td class="num">179 KB</td><td>Fallback más preciso</td></tr>
+      <tr><td>Detector de caídas int8</td><td class="num">22 KB</td><td>Modelo independiente</td></tr>
+      <tr class="total"><td>Total en la app</td><td class="num">~128 KB</td><td>Ambos modelos</td></tr>
+    </table>
+    <p style="margin-top:10px;font-size:0.92rem;color:var(--muted)">Objetivo del caso era &lt;500 KB y &lt;50 ms. Ambos se superan con holgura: 128 KB y &lt;1 ms.</p>
+  </div></div>
+
+  <div class="block"><div class="label">Por qué dos modelos y no uno</div><div class="why"><ul>
+    <li><strong>Optimizan cosas distintas</strong>: actividad maximiza acierto global (macro-F1); caídas maximiza <em>recall</em> (no perder ninguna). Un solo modelo no puede priorizar ambas.</li>
+    <li><strong>Duty-cycling</strong>: el detector de impacto de caídas es barato y corre siempre; la CNN cara solo se enciende cuando hace falta → de ahí el &lt;1% de batería/hora.</li>
+    <li><strong>Mantenimiento</strong>: se puede reentrenar uno sin tocar el otro.</li>
+  </ul></div></div>
+
+  <div class="block"><div class="label">Si preguntan</div>
+    <div class="qa"><p class="q">¿La cuantización no baja la precisión?</p><p>Algo, típicamente &lt;1–2%. Por eso guardamos también la versión fp16 como fallback. Para el dispositivo, el int8 es el mejor punto tamaño/velocidad/precisión.</p></div>
+    <div class="qa"><p class="q">¿Cómo medís &lt;1 ms y &lt;1% batería?</p><p>Benchmark de latencia en el notebook de exportación y estimación de consumo por el duty-cycling (la CNN no corre en cada muestra, solo en ventanas/eventos).</p></div>
+  </div>
+</section>
+
+<!-- ===================== DEEP DIVE: MODELO DE CAÍDAS ===================== -->
+
+<!-- 11 -->
+<section class="s deepdive color-amber" id="d11">
+  <div class="s-head"><div class="s-num">11</div><div class="meta"><div class="kicker">El modelo de caídas</div><h3>CNN binaria, ultraligera — 22 KB</h3></div><div class="deeptag">Deep dive</div></div>
+
+  <div class="block"><div class="label">Qué se ve</div><p>Flujo: <strong>2 s de movimiento</strong> → <strong>CNN 1D (2 bloques)</strong> → <strong>¿caída? sí/no</strong>. Chips de las capas (Conv 32 · Conv 64 · Pooling · Dense 32 · Sigmoid). KPIs: 22 KB int8, "recall primero".</p></div>
+
+  <div class="block"><div class="label">Qué decir</div><div class="say">"El detector de caídas es un segundo modelo, distinto e independiente del de actividad. Toma 2 segundos de sensores y responde una sola pregunta: ¿esto es una caída, sí o no? Es minúsculo — 22 KB — porque es un clasificador binario, mucho más simple que el de cinco actividades."</div></div>
+
+  <div class="block"><div class="label">Por qué es un problema distinto al HAR</div><div class="why"><ul>
+    <li><strong>Binario</strong> (caída / no caída), no 5 clases → red mucho más pequeña.</li>
+    <li><strong>Ventana más corta</strong>: 2 s (100 muestras @ 50 Hz) en vez de 2,56 s. Una caída es un evento brusco y breve — no necesita ver varios ciclos, necesita capturar el impacto y el reposo posterior.</li>
+    <li><strong>Optimiza recall</strong>, no acierto global: el coste de no detectar una caída ≫ el de una falsa alarma.</li>
+    <li><strong>Datos propios</strong>: SisFall (200→50 Hz, ancianos reales) + MobiAct. No comparte dataset con el HAR.</li>
+  </ul></div></div>
+
+  <div class="block"><div class="label">Arquitectura real (2 bloques convolucionales)</div>
+    <div class="arch">
+      <div class="lyr in"><span class="stage">IN</span><span class="desc">Entrada — ventana de sensores (2 s)</span><span class="shp">(100, 6)</span></div>
+      <div class="lyr"><span class="stage">B1</span><span class="desc">Conv1D(32, k=3, ReLU) + BatchNorm → MaxPool</span><span class="shp">→ (50, 32)</span></div>
+      <div class="lyr"><span class="stage">B2</span><span class="desc">Conv1D(64, k=3, ReLU) + BatchNorm → MaxPool</span><span class="shp">→ (25, 64)</span></div>
+      <div class="lyr"><span class="stage">GP</span><span class="desc">GlobalAveragePooling</span><span class="shp">→ (64)</span></div>
+      <div class="lyr"><span class="stage">FC</span><span class="desc">Dense(32, ReLU) + Dropout(0,3)</span><span class="shp">→ (32)</span></div>
+      <div class="lyr out"><span class="stage">OUT</span><span class="desc">Dense(1, Sigmoid) → probabilidad de caída [0–1]</span><span class="shp">→ (1)</span></div>
+    </div>
+    <p style="margin-top:10px;font-size:0.92rem;color:var(--muted)">Dos bloques (32→64) bastan: el patrón de caída (caída libre breve → pico de impacto → reposo) es más simple de separar que cinco actividades. La salida <strong>sigmoid</strong> da una probabilidad 0–1, y el <strong>umbral</strong> sobre esa probabilidad es lo que se ajusta por perfil de edad (slide 14).</p>
+  </div>
+
+  <div class="block"><div class="label">El modelo es la etapa 2 de una cascada</div><div class="why"><p>La CNN no corre todo el rato. Solo se activa cuando un <strong>detector de impacto barato</strong> (magnitud del vector de aceleración, SVM, supera ~3g) la despierta. Así el modelo caro solo evalúa candidatos reales → ahorro de batería. La CNN confirma, y luego entran inmovilidad 30 s + confirmación al usuario. La cascada completa está en la slide 13.</p></div></div>
+
+  <div class="block"><div class="label">Si preguntan</div>
+    <div class="qa"><p class="q">¿Por qué no un solo modelo para todo (actividad + caída)?</p><p>"Optimizan métricas opuestas: actividad maximiza acierto global, caída maximiza recall. Y separarlos permite que el detector de impacto barato filtre antes de gastar la CNN — clave para la batería."</p></div>
+    <div class="qa"><p class="q">¿Por qué entradas distintas (100 vs 128 muestras)?</p><p>La caída es un evento corto y violento; 2 s capturan impacto + reposo. La actividad es periódica; 2,56 s capturan varios ciclos. Cada problema usa la ventana que le conviene.</p></div>
+  </div>
+</section>
+
+<!-- ===================== FALLS · RESULTADOS Y CASCADA ===================== -->
+
+<!-- 12 -->
+<section class="s color-green" id="d12">
+  <div class="s-head"><div class="s-num">12</div><div class="meta"><div class="kicker">Detección de caídas · Resultados</div><h3>Recall primero: no perder ninguna caída</h3></div></div>
+  <div class="block"><div class="label">Qué se ve</div><p>Trío: <strong>100%</strong> caídas detectadas (recall) · <strong>96,5%</strong> precisión · <strong>22 KB</strong> tamaño.</p></div>
+  <div class="block"><div class="label">Qué decir</div><div class="say">"En caídas lo grave es no detectar una. Priorizamos el recall — detectar todas — manteniendo la precisión alta para no inundar de falsas alarmas."</div></div>
+  <div class="block"><div class="label">Por qué importa</div><div class="why"><p>En salud, el coste de un falso negativo (caída no avisada) ≫ falso positivo (alarma de más). Por eso el umbral se mueve hacia recall. La cascada de 4 filtros (slide 13) es lo que recupera precisión sin sacrificar ese recall.</p></div></div>
+  <div class="block"><div class="label">Si preguntan</div><div class="qa"><p class="q">¿100% recall no suena a sobreajuste?</p><p>Es sobre el split de test, y existe un <em>trade-off</em> recall/precisión según el umbral — en los experimentos vimos curvas con recall alto (0,8–1,0) a distintos niveles de precisión. Hay que ser honesto: el número exacto depende del umbral elegido y del conjunto. Lo robusto es la <strong>estrategia</strong> (recall primero + cascada), no un decimal concreto.</p></div></div>
+</section>
+
+<!-- 12 -->
+<section class="s color-amber" id="d13">
+  <div class="s-head"><div class="s-num">13</div><div class="meta"><div class="kicker">Cómo confirma una caída</div><h3>4 filtros contra falsas alarmas</h3></div></div>
+  <div class="block"><div class="label">Qué se ve</div><p>Cascada: <strong>1</strong> detecta impacto → <strong>2</strong> IA confirma → <strong>3</strong> 30 s inmóvil → <strong>4</strong> "¿estás bien?" sin respuesta → avisa familia.</p></div>
+  <div class="block"><div class="label">Qué decir</div><div class="say">"Una caída no dispara alarma sola. Cuatro filtros en cascada: detector de impacto barato siempre activo, la IA confirma que es caída y no un golpe, 30 segundos sin moverse, y por último pregunta al usuario. Solo si todo falla avisa a la familia."</div></div>
+  <div class="block"><div class="label">Por qué cascada (no un solo clasificador)</div><div class="why"><ul>
+    <li><strong>Etapa 1 barata</strong> (umbral de aceleración) corre siempre con coste casi nulo de batería.</li>
+    <li><strong>Etapa 2 (CNN)</strong> cara, solo se enciende tras un impacto → ahorro de energía.</li>
+    <li><strong>Etapas 3–4</strong> (inmovilidad + confirmación) eliminan los falsos positivos restantes (soltar el móvil, sentarse de golpe).</li>
+  </ul><p>Cada filtro recorta falsas alarmas sin tocar el recall de caídas reales.</p></div></div>
+</section>
+
+<!-- 13 -->
+<section class="s" id="d14">
+  <div class="s-head"><div class="s-num">14</div><div class="meta"><div class="kicker">Sensibilidad por perfil</div><h3>Cada póliza, su ajuste</h3></div></div>
+  <div class="block"><div class="label">Qué se ve</div><p>Tres perfiles: <strong>65+</strong> muy sensible · <strong>45–65</strong> equilibrado · <strong>&lt;45</strong> conservador. "Vitalia lo cambia desde el perfil, sin reprogramar."</p></div>
+  <div class="block"><div class="label">Qué decir</div><div class="say">"El mismo modelo, distinto umbral según riesgo. A un mayor le subimos sensibilidad — preferimos una falsa alarma a perder una caída. A un joven, lo contrario. Y se cambia desde el perfil, sin tocar código."</div></div>
+  <div class="block"><div class="label">Idea clave</div><p>Un único umbral configurable (threshold persistido en la app) cubre toda la cartera. Convierte una decisión técnica (punto de operación de la curva recall/precisión) en un <strong>parámetro de negocio</strong> que Vitalia opera por segmento.</p></div>
+</section>
+
+<!-- 14 -->
+<section class="s color-green" id="d15">
+  <div class="s-head"><div class="s-num">15</div><div class="meta"><div class="kicker">Privacidad · RGPD por diseño</div><h3>Los datos nunca salen de Europa</h3></div></div>
+  <div class="block"><div class="label">Qué se ve</div><p>"La señal cruda se procesa en el móvil y se borra en segundos. Solo viaja el resultado: <em>caminó 15 min</em>."</p></div>
+  <div class="block"><div class="label">Qué decir</div><div class="say">"Privacidad por diseño, no por política. El sensor crudo se procesa y se borra en el móvil. Lo único que cruza la red es un evento agregado. Y el servidor está en Europa."</div></div>
+  <div class="block"><div class="label">Por qué importa</div><div class="why"><p>Datos de salud = categoría especial RGPD (Art. 9). Minimización en origen: si el dato bruto no sale del dispositivo, gran parte del riesgo legal desaparece. Diferenciador frente a soluciones cloud que suben la señal.</p></div></div>
+  <div class="block"><div class="label">Si preguntan</div><div class="qa"><p class="q">¿Base legal del tratamiento?</p><p>Consentimiento explícito + minimización de datos. El procesado on-device reduce el alcance del tratamiento; al backend solo llega el evento derivado, nunca biometría cruda.</p></div></div>
+</section>
+
+<!-- 15 -->
+<section class="s color-amber" id="d16">
+  <div class="s-head"><div class="s-num">16</div><div class="meta"><div class="kicker">Arquitectura a producción</div><h3>Servidor propio, sin terceros</h3></div></div>
+  <div class="block"><div class="label">Qué se ve</div><p>Flujo Smartphone (IA + caídas) → Servidor (Hetzner, Frankfurt), "solo el evento". Stack: Flutter, FastAPI, PostgreSQL, Redis, ntfy, MinIO.</p></div>
+  <div class="block"><div class="label">Qué decir</div><div class="say">"Backend self-hosted en Hetzner Frankfurt — sin AWS, sin Google, sin terceros fuera de la UE. Stack open-source estándar. Soberanía total del dato."</div></div>
+  <div class="block"><div class="label">Por qué self-hosted y qué hace cada pieza</div><div class="why"><ul>
+    <li><strong>Flutter</strong> — app Android (y futuro iOS) con un solo código.</li>
+    <li><strong>FastAPI</strong> — API que recibe los eventos derivados.</li>
+    <li><strong>PostgreSQL</strong> — almacena eventos de actividad y alertas.</li>
+    <li><strong>Redis</strong> — cola/caché para procesar alertas rápido.</li>
+    <li><strong>ntfy</strong> — notificaciones push (aviso de caída a familia).</li>
+    <li><strong>MinIO</strong> — almacenamiento de objetos (modelos OTA, backups).</li>
+  </ul><p>Self-hosted evita transferencias internacionales de datos de salud (sin exposición al Cloud Act de EEUU) y da coste fijo predecible.</p></div></div>
+</section>
+
+<!-- ===================== DEEP DIVE: COSTE ===================== -->
+
+<!-- 16 -->
+<section class="s deepdive color-green" id="d17">
+  <div class="s-head"><div class="s-num">17</div><div class="meta"><div class="kicker">Coste · Construcción (una vez)</div><h3>50.000 € para 180.000 asegurados</h3></div><div class="deeptag">Deep dive</div></div>
+
+  <div class="block"><div class="label">Qué se ve</div><p>CapEx <strong>50.000 €</strong> con desglose en barras: Datos + 2 modelos IA 21.000 · App + infraestructura 16.000 · Automatización + QA 10.000 · Legal + protección datos 3.000.</p></div>
+
+  <div class="block"><div class="label">Qué decir</div><div class="say">"Construir todo el sistema, una sola vez: 50.000 €. La partida mayor es el trabajo de datos y los dos modelos de IA. Repartido entre 180.000 asegurados, el coste de construcción es de céntimos por persona."</div></div>
+
+  <div class="block"><div class="label">Cómo se calcula — base del presupuesto</div><div class="why">
+    <p>El coste es esencialmente <strong>tiempo de ingeniería</strong>: tarifa de equipo júnior <strong>100 €/h</strong>, 40 h/semana. Cada partida es un número de <em>persona-semanas</em> × 4.000 €/semana.</p>
+    <table>
+      <tr><th>Partida (slide)</th><th>Incluye</th><th class="num">Coste</th></tr>
+      <tr><td>Datos + 2 modelos IA</td><td>Pipelines, preprocesado, HAR, detector de caídas</td><td class="num">21.000 €</td></tr>
+      <tr><td>App + infraestructura</td><td>Flutter + TFLite + backend self-hosted</td><td class="num">16.000 €</td></tr>
+      <tr><td>Automatización + QA</td><td>MLOps, pruebas, pipeline OTA</td><td class="num">10.000 €</td></tr>
+      <tr><td>Legal + protección datos</td><td>DPIA / DPO / cumplimiento RGPD</td><td class="num">3.000 €</td></tr>
+      <tr class="total"><td>Total CapEx (lean)</td><td></td><td class="num">50.000 €</td></tr>
+    </table>
+  </div></div>
+
+  <div class="block"><div class="label">Dos escenarios — sé consciente de la diferencia</div><div class="warn"><p>La slide muestra el escenario <strong>lean (50.000 €)</strong>: MVP-a-producción ágil. El documento de coste interno (<code>docs/modelo_coste.md</code>) detalla además un escenario <strong>completo de ~84.000 €</strong> (21 persona-semanas) que añade QA exhaustivo, MLOps completo y margen de certificación. No son contradictorios: son <em>niveles de alcance</em>. Si el jurado pregunta por el número "real", explica ambos.</p></div></div>
+
+  <div class="block"><div class="label">Si preguntan</div>
+    <div class="qa"><p class="q">¿50.000 € no es poco para un sistema médico?</p><p>"Es el alcance MVP-a-producción con equipo júnior. El presupuesto completo con certificación y QA exhaustivo lo estimamos en ~84.000 €. Lo relevante es que cualquiera de los dos se recupera en menos de una semana de operación (slide 18)."</p></div>
+    <div class="qa"><p class="q">¿Incluye el mantenimiento?</p><p>No — esto es construcción (CapEx, una vez). El coste recurrente (OpEx) va en la siguiente diapositiva: 512 €/mes.</p></div>
+  </div>
+</section>
+
+<!-- 17 -->
+<section class="s deepdive" id="d18">
+  <div class="s-head"><div class="s-num">18</div><div class="meta"><div class="kicker">Coste · Operación + Retorno</div><h3>512 €/mes · ROI en &lt; 1 semana</h3></div><div class="deeptag">Deep dive</div></div>
+
+  <div class="block"><div class="label">Qué se ve</div><p><strong>512 €/mes</strong> = 0,003 € por usuario/mes. Tarjeta de retorno: intervención temprana en caídas → <strong>9,18 M€ ahorro/año</strong>. Recuperación de la inversión &lt; 1 semana.</p></div>
+
+  <div class="block"><div class="label">Qué decir</div><div class="say">"Operar cuesta 512 € al mes — tres milésimas de euro por usuario. Y la detección temprana de caídas evita hospitalizaciones largas: el ahorro estimado es de 9,18 millones al año. La inversión se recupera en menos de una semana."</div></div>
+
+  <div class="block"><div class="label">Desglose del OpEx — de dónde salen los 512 €</div><div class="why">
+    <table>
+      <tr><th>Componente</th><th>Especificación</th><th class="num">€/mes</th></tr>
+      <tr><td>Servidor principal</td><td>Hetzner AX42: 12-core AMD, 64 GB RAM, 2×1,92 TB NVMe (Frankfurt)</td><td class="num">75 €</td></tr>
+      <tr><td>Réplica HA</td><td>CX42 standby + replicación PostgreSQL</td><td class="num">30 €</td></tr>
+      <tr><td>Backups</td><td>Object Storage 1 TB/mes</td><td class="num">5 €</td></tr>
+      <tr><td>Dominio + TLS</td><td>Let's Encrypt (gratis) + registro</td><td class="num">2 €</td></tr>
+      <tr><td>Ancho de banda</td><td>1 TB/mes incluido</td><td class="num">0 €</td></tr>
+      <tr><td>Ops / sysadmin</td><td>0,1 FTE — mantenimiento Docker Compose</td><td class="num">400 €</td></tr>
+      <tr class="total"><td>Total OpEx</td><td></td><td class="num">512 €</td></tr>
+    </table>
+    <p style="margin-top:10px;font-size:0.92rem;color:var(--muted)">El grueso (400 €) es trabajo humano, no infraestructura: la infra pura son ~112 €/mes. La inferencia es on-device → el backend solo registra eventos ligeros, por eso un servidor mid-tier sobra para 180k usuarios.</p>
+  </div></div>
+
+  <div class="block"><div class="label">Coste por usuario y ventaja vs comprar (build-vs-buy)</div><div class="why">
+    <div class="code"><span class="c"># Coste por usuario activo</span><br>512 € / 180.000 usuarios = <span class="v">0,003 €/usuario/mes</span></div>
+    <table style="margin-top:12px">
+      <tr><th>Opción</th><th class="num">€/mes (180k)</th><th>RGPD</th></tr>
+      <tr><td><strong>Vitalia (self-hosted, on-device)</strong></td><td class="num">512 €</td><td>✅ EEE, sin transferencias</td></tr>
+      <tr><td>API terceros (ej. Withings)</td><td class="num">~5.000 €</td><td>⚠ señal sale a EEUU</td></tr>
+      <tr><td>SDK HAR licenciado</td><td class="num">2.000–8.000 €</td><td>⚠ datos en terceros</td></tr>
+      <tr><td>Cloud gestionado (AWS/GCP)</td><td class="num">~548 €</td><td>⚠ transferencias internacionales</td></tr>
+    </table>
+    <p style="margin-top:10px"><strong>~9× más barato</strong> que la API de terceros más comparable, y elimina el riesgo RGPD.</p>
+  </div></div>
+
+  <div class="block"><div class="label">El ROI, paso a paso (los 9,18 M€)</div><div class="why">
+    <div class="code"><span class="c"># Ahorro anual por intervención temprana</span><br>180.000 <span class="c">asegurados 60+</span><br>× <span class="d">2 %</span>     <span class="c">incidencia anual de caída grave (epidemiología España)</span><br>× <span class="d">30 %</span>    <span class="c">casos con intervención temprana gracias al sistema</span><br>× <span class="d">8.500 €</span> <span class="c">siniestralidad media evitada (hospital + rehab)</span><br>= <span class="v">9.180.000 € / año</span></div>
+    <div class="code" style="margin-top:10px"><span class="c"># Break-even</span><br>CapEx:        50.000–84.000 €<br>OpEx año 1:   512 €/mes × 12 = 6.144 €<br>Ahorro año 1: <span class="v">9.180.000 €</span><br>Break-even:   <span class="v">&lt; 1 semana</span> de operación</div>
+  </div></div>
+
+  <div class="block"><div class="label">Si preguntan</div>
+    <div class="qa"><p class="q">¿Cómo justificáis el 2% y el 30%?</p><p>"El 2% de incidencia de caída grave en mayores es dato epidemiológico de España. El 30% de intervención temprana es nuestra hipótesis conservadora de cuántos casos mejora la detección. Son supuestos del modelo — lo defendible es el ratio coste/beneficio, que sigue siendo abrumador aunque ajustes los porcentajes a la mitad."</p></div>
+    <div class="qa"><p class="q">¿Y si los porcentajes fueran la mitad?</p><p>Incluso con 1% y 15%, el ahorro sería ~2,3 M€/año — sigue recuperando la inversión en días. El caso de negocio no depende del decimal.</p></div>
+  </div>
+</section>
+
+<!-- 18 -->
+<section class="s color-amber" id="d19">
+  <div class="s-head"><div class="s-num">19</div><div class="meta"><div class="kicker">Cierre</div><h3>3 razones que la hacen única</h3></div></div>
+  <div class="block"><div class="label">Qué se ve</div><p><strong>Precio</strong> — 9× más barata que API de terceros · <strong>Robustez</strong> — 54 personas, 15 ancianos, 4 filtros · <strong>Ajuste</strong> — RGPD por diseño, datos en Europa, VitaPoints.</p></div>
+  <div class="block"><div class="label">Qué decir</div><div class="say">"Tres razones para quedarse: más barata que cualquier API externa, robusta porque está entrenada con personas reales y blindada con cuatro filtros, y encaja en VitaPoints respetando el RGPD desde el diseño."</div></div>
+  <div class="block"><div class="label">Cierre</div><p>Recoge los tres ejes de la portada (precio / robustez / ajuste-privacidad). Última frase memorable: no es una demo bonita — es desplegable, barata y legal hoy.</p></div>
+</section>
+
+<footer>Vitalia Health Insurance · Caso 06 · Equipo Íñigo + Jaime — documento de apoyo a la presentación. Cifras técnicas: <code>models/tflite/model_meta.json</code> · coste: <code>docs/modelo_coste.md</code></footer>
+
+</div>
+</body>
+</html>

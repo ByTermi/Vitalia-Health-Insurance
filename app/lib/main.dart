@@ -88,13 +88,13 @@ class VitaliaApp extends StatelessWidget {
       theme: ThemeData.light().copyWith(
         scaffoldBackgroundColor: const Color(0xFFEFF2F6),
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF03045E),
-          primary: const Color(0xFF03045E),
+          seedColor: const Color(0xFF1558D6),
+          primary: const Color(0xFF1558D6),
           brightness: Brightness.light,
         ),
         sliderTheme: const SliderThemeData(
-          activeTrackColor: Color(0xFF03045E),
-          thumbColor: Color(0xFF03045E),
+          activeTrackColor: Color(0xFF1558D6),
+          thumbColor: Color(0xFF1558D6),
         ),
       ),
       home: const HomePage(),

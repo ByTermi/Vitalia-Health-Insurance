@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vitalia Health Insurance — Reconocimiento de Actividad y Detección de Caídas</title>
+<style>
+:root{
+  --bg:#FAFAF8;--surface:#ffffff;--ink:#1a1a1a;--muted:#6b7280;--faint:#9ca3af;
+  --line:#e7e4dd;
+  --blue:#2563eb;--green:#059669;--amber:#b45309;--red:#dc2626;--purple:#7c3aed;
+  --blue-bg:#eff4ff;--green-bg:#ecfdf5;--amber-bg:#fef6ec;--red-bg:#fdecec;--purple-bg:#f3effd;
+  --pad:clamp(28px,5vw,72px);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;user-select:none}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);line-height:1.4;-webkit-font-smoothing:antialiased}
+.deck{width:100vw;height:100vh;position:relative;overflow:hidden}
+.slide{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:clamp(14px,2.5vh,30px);padding:var(--pad);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .25s ease,visibility .25s ease;overflow:hidden}
+.slide.active{opacity:1;visibility:visible;pointer-events:all}
+.slide.center{align-items:center;text-align:center}
+
+.progress-bar{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--blue),var(--green));transition:width .3s ease;z-index:100}
+.nav{position:fixed;bottom:clamp(14px,2.5vh,24px);left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:14px;z-index:100}
+.nav-btn{background:var(--surface);border:1px solid var(--line);color:var(--muted);padding:8px 18px;border-radius:9px;cursor:pointer;font-size:0.85rem;transition:all .2s;font-family:inherit}
+.nav-btn:hover:not(:disabled){border-color:var(--blue);color:var(--blue)}
+.nav-btn:disabled{opacity:.4;cursor:default}
+.nav-counter{color:var(--faint);font-size:0.85rem;min-width:62px;text-align:center}
+
+/* typography */
+.tag{font-size:clamp(0.7rem,1vw,0.82rem);font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--blue)}
+.title{font-size:clamp(1.9rem,4.4vw,3.4rem);font-weight:800;line-height:1.08;letter-spacing:-.02em}
+.title span{color:var(--blue)}
+.title .gr{color:var(--green)}
+.lead{font-size:clamp(1.05rem,1.9vw,1.5rem);color:var(--muted);max-width:24ch;line-height:1.35}
+.sub{font-size:clamp(0.95rem,1.5vw,1.2rem);color:var(--muted);max-width:60ch}
+
+/* giant stat */
+.stat{font-size:clamp(3.4rem,12vw,9rem);font-weight:800;line-height:.9;letter-spacing:-.03em;color:var(--blue)}
+.stat.green{color:var(--green)}.stat.red{color:var(--red)}.stat.amber{color:var(--amber)}
+.stat-label{font-size:clamp(1.1rem,2.2vw,1.8rem);font-weight:700;color:var(--ink)}
+.stat-note{font-size:clamp(0.9rem,1.4vw,1.15rem);color:var(--muted);max-width:42ch}
+
+/* stat trio */
+.trio{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(16px,3vw,40px);width:100%}
+.trio .s{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
+.trio .n{font-size:clamp(2.4rem,7vw,5rem);font-weight:800;line-height:.95;letter-spacing:-.02em;color:var(--blue)}
+.trio .s.green .n{color:var(--green)}.trio .s.amber .n{color:var(--amber)}
+.trio .l{font-size:clamp(0.85rem,1.4vw,1.15rem);font-weight:700;color:var(--ink)}
+.trio .d{font-size:clamp(0.75rem,1.1vw,0.95rem);color:var(--muted);max-width:22ch}
+
+/* flow */
+.flow{display:flex;align-items:center;justify-content:center;gap:clamp(10px,2vw,26px);flex-wrap:wrap;width:100%}
+.fbox{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:clamp(16px,2.5vw,32px) clamp(18px,3vw,40px);text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.05);min-width:clamp(120px,18vw,210px)}
+.fbox .ic{font-size:clamp(2.2rem,5vw,4rem);line-height:1}
+.fbox .t{font-size:clamp(0.95rem,1.6vw,1.3rem);font-weight:700;margin-top:8px}
+.fbox .n2{font-size:clamp(0.75rem,1.1vw,0.95rem);color:var(--muted);margin-top:3px}
+.fbox.blue{border-bottom:4px solid var(--blue)}.fbox.green{border-bottom:4px solid var(--green)}.fbox.amber{border-bottom:4px solid var(--amber)}
+.arrow{font-size:clamp(1.6rem,4vw,3rem);color:var(--blue);font-weight:300}
+.arrow small{display:block;font-size:clamp(0.6rem,0.9vw,0.8rem);color:var(--muted);font-weight:600}
+
+/* card grid */
+.cards{display:grid;gap:clamp(14px,2.2vw,26px);width:100%}
+.cards.c3{grid-template-columns:repeat(3,1fr)}
+.cards.c2{grid-template-columns:repeat(2,1fr)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:clamp(18px,2.6vw,32px);box-shadow:0 2px 8px rgba(0,0,0,.05);display:flex;flex-direction:column;gap:10px}
+.card.blue{border-top:4px solid var(--blue)}.card.green{border-top:4px solid var(--green)}.card.amber{border-top:4px solid var(--amber)}.card.red{border-top:4px solid var(--red)}.card.purple{border-top:4px solid var(--purple)}
+.card .ic{font-size:clamp(2rem,3.5vw,3rem);line-height:1}
+.card .ct{font-size:clamp(1.05rem,1.8vw,1.4rem);font-weight:700}
+.card.blue .ct{color:var(--blue)}.card.green .ct{color:var(--green)}.card.amber .ct{color:var(--amber)}.card.red .ct{color:var(--red)}.card.purple .ct{color:var(--purple)}
+.card .cb{font-size:clamp(0.9rem,1.4vw,1.15rem);color:var(--muted)}
+
+/* icon grid (actividades) */
+.acts{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(14px,2.2vw,26px);width:100%}
+.act{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:clamp(16px,2.4vw,30px);text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+.act.on{border-bottom:4px solid var(--blue)}.act.fall{border-bottom:4px solid var(--green)}
+.act .ic{font-size:clamp(2.4rem,5vw,3.6rem)}
+.act .t{font-size:clamp(1rem,1.7vw,1.35rem);font-weight:700;margin-top:8px}
+.act .vp{font-size:clamp(0.8rem,1.2vw,1rem);color:var(--muted);margin-top:4px}
+
+/* chips */
+.chips{display:flex;gap:clamp(8px,1.4vw,16px);flex-wrap:wrap;justify-content:center}
+.chip{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:clamp(8px,1.2vw,14px) clamp(16px,2.2vw,28px);font-size:clamp(0.9rem,1.5vw,1.25rem);font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.chip.off{color:var(--faint);text-decoration:line-through;font-weight:600}
+.chip.win{background:var(--blue);color:#fff;border-color:var(--blue)}
+.badge{display:inline-block;padding:6px 16px;border-radius:999px;font-size:clamp(0.8rem,1.2vw,1rem);font-weight:600}
+.bb{background:var(--blue-bg);color:var(--blue)}.bg{background:var(--green-bg);color:var(--green)}.ba{background:var(--amber-bg);color:var(--amber)}
+
+/* numbered steps */
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:clamp(12px,2vw,24px);width:100%}
+.step{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:clamp(16px,2.2vw,28px);box-shadow:0 2px 8px rgba(0,0,0,.05);display:flex;flex-direction:column;gap:10px}
+.step .num{width:clamp(36px,4vw,52px);height:clamp(36px,4vw,52px);border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:clamp(1.1rem,2vw,1.6rem);font-weight:800}
+.step:nth-child(1) .num{background:var(--green)}
+.step:nth-child(3) .num{background:var(--amber)}
+.step:nth-child(4) .num{background:var(--purple)}
+.step .st{font-size:clamp(0.95rem,1.5vw,1.25rem);font-weight:700}
+.step .sd{font-size:clamp(0.82rem,1.2vw,1.02rem);color:var(--muted)}
+
+/* cost breakdown bars */
+.bars{display:flex;flex-direction:column;gap:clamp(8px,1.4vw,14px);width:100%;max-width:760px}
+.bar{display:flex;align-items:center;gap:14px}
+.bar .bl{font-size:clamp(0.85rem,1.4vw,1.15rem);flex:0 0 clamp(150px,22vw,260px)}
+.bar .bt{flex:1;height:clamp(20px,2.6vw,32px);background:var(--blue-bg);border-radius:8px;overflow:hidden;position:relative}
+.bar .bf{height:100%;background:var(--blue);border-radius:8px}
+.bar .bv{font-size:clamp(0.85rem,1.4vw,1.15rem);font-weight:700;color:var(--blue);flex:0 0 clamp(56px,7vw,84px);text-align:right}
+
+.row{display:flex;gap:clamp(16px,3vw,48px);align-items:center;flex-wrap:wrap;width:100%;justify-content:center}
+.kpi-line{display:flex;gap:clamp(20px,4vw,60px);flex-wrap:wrap;justify-content:center}
+</style>
+</head>
+<body>
+<div class="progress-bar" id="pb"></div>
+<div class="deck" id="deck">
+
+<!-- 1 PORTADA -->
+<div class="slide center" id="s1">
+  <div class="tag">Caso 06 · Vitalia Health Insurance</div>
+  <div class="title">Detecta tu actividad.<br><span>Detecta tus caídas.</span></div>
+  <div class="lead" style="max-width:38ch">Inteligencia artificial dentro del móvil. Sin enviar datos a ningún sitio.</div>
+  <div class="chips" style="margin-top:10px">
+    <span class="badge bb">IA en el móvil</span>
+    <span class="badge bg">Caídas 65+</span>
+    <span class="badge ba">Datos en Europa</span>
+  </div>
+  <div style="margin-top:18px;font-size:clamp(0.9rem,1.4vw,1.15rem);color:var(--muted)">Equipo <strong style="color:var(--blue)">Íñigo S</strong> + <strong style="color:var(--green)">Jaime</strong></div>
+</div>
+
+<!-- 2 PROBLEMA -->
+<div class="slide center" id="s2">
+  <div class="tag">El problema</div>
+  <div class="stat red">35%</div>
+  <div class="stat-label">de los VitaPoints son fraude</div>
+  <div class="stat-note">180.000 asegurados declaran su actividad a mano. Hoy no hay forma de verificarla.</div>
+</div>
+
+<!-- 3 LA IDEA -->
+<div class="slide center" id="s3">
+  <div class="tag">La solución · MVP funcional</div>
+  <div class="title">Todo ocurre <span>en el móvil</span></div>
+  <div class="flow" style="margin-top:18px">
+    <div class="fbox blue"><div class="ic">📱</div><div class="t">Sensores</div><div class="n2">Movimiento</div></div>
+    <div class="arrow">→</div>
+    <div class="fbox blue"><div class="ic">🧠</div><div class="t">IA on-device</div><div class="n2">Clasifica</div></div>
+    <div class="arrow">→<small>solo el resultado</small></div>
+    <div class="fbox green"><div class="ic">☁️</div><div class="t">Servidor</div><div class="n2">En Europa</div></div>
+  </div>
+  <div class="sub" style="margin-top:18px">Sin internet · Sin fraude · Los datos brutos nunca salen del dispositivo</div>
+</div>
+
+<!-- 4 QUÉ RECONOCE -->
+<div class="slide center" id="s4">
+  <div class="tag">Qué reconoce</div>
+  <div class="title">5 actividades <span>+ caídas</span></div>
+  <div class="acts" style="margin-top:14px">
+    <div class="act"><div class="ic">🪑</div><div class="t">Estático</div><div class="vp">0 VP/min</div></div>
+    <div class="act on"><div class="ic">🚶</div><div class="t">Caminando</div><div class="vp">2 VP/min</div></div>
+    <div class="act on"><div class="ic">🏃</div><div class="t">Corriendo</div><div class="vp">5 VP/min</div></div>
+    <div class="act on"><div class="ic">⬆️</div><div class="t">Escaleras ↑</div><div class="vp">3 VP/min</div></div>
+    <div class="act on"><div class="ic">⬇️</div><div class="t">Escaleras ↓</div><div class="vp">2 VP/min</div></div>
+    <div class="act fall"><div class="ic">🆘</div><div class="t">Caída</div><div class="vp">Emergencia</div></div>
+  </div>
+</div>
+
+<!-- 5 MVP YA FUNCIONA -->
+<div class="slide center" id="s5">
+  <div class="tag">El prototipo ya funciona</div>
+  <div class="title">Demo real, <span>no maqueta</span></div>
+  <div class="trio" style="margin-top:20px;max-width:1000px">
+    <div class="s"><div class="n">106 KB</div><div class="l">Tamaño del modelo</div><div class="d">Como 3 fotos</div></div>
+    <div class="s green"><div class="n">&lt;1 ms</div><div class="l">Por clasificación</div><div class="d">Instantáneo</div></div>
+    <div class="s amber"><div class="n">&lt;1%</div><div class="l">Batería / hora</div><div class="d">Imperceptible</div></div>
+  </div>
+</div>
+
+<!-- 6 DATOS ACTIVIDAD -->
+<div class="slide center" id="s6">
+  <div class="tag">Datos · Actividad</div>
+  <div class="stat">54</div>
+  <div class="stat-label">personas reales entrenando el modelo</div>
+  <div class="chips" style="margin-top:18px">
+    <span class="chip">UCI HAR</span>
+    <span class="chip">MotionSense</span>
+    <span class="chip">PAMAP2</span>
+  </div>
+  <div class="stat-note" style="margin-top:14px">Datasets públicos, reconocidos, grabados con smartphones reales</div>
+</div>
+
+<!-- 7 DATOS CAÍDAS -->
+<div class="slide center" id="s7">
+  <div class="tag">Datos · Caídas</div>
+  <div class="stat green">15</div>
+  <div class="stat-label">ancianos reales de 60–75 años</div>
+  <div class="stat-note" style="margin-top:10px">Dataset <strong>SisFall</strong> — el único que cubre el segmento <strong>65+</strong> del enunciado.</div>
+</div>
+
+<!-- 8 EL MODELO -->
+<div class="slide center" id="s8">
+  <div class="tag">El modelo de IA</div>
+  <div class="title">Red neuronal <span>para móviles</span></div>
+  <div class="flow" style="margin-top:18px">
+    <div class="fbox blue"><div class="ic">📊</div><div class="t">2.56 s</div><div class="n2">de movimiento</div></div>
+    <div class="arrow">→</div>
+    <div class="fbox blue"><div class="ic">🧠</div><div class="t">CNN 1D</div><div class="n2">3 capas</div></div>
+    <div class="arrow">→</div>
+    <div class="fbox green"><div class="ic">✅</div><div class="t">Actividad</div><div class="n2">clasificada</div></div>
+  </div>
+  <div class="kpi-line" style="margin-top:22px">
+    <div><span style="font-size:clamp(1.6rem,3.5vw,2.6rem);font-weight:800;color:var(--blue)">≥85%</span> <span style="color:var(--muted)">precisión</span></div>
+    <div><span style="font-size:clamp(1.6rem,3.5vw,2.6rem);font-weight:800;color:var(--green)">validado por sujeto</span></div>
+  </div>
+</div>
+
+<!-- 9 POR QUÉ CNN -->
+<div class="slide center" id="s9">
+  <div class="tag">Por qué esta arquitectura</div>
+  <div class="title">Probamos 5. <span>Ganó la 1D-CNN</span></div>
+  <div class="chips" style="margin-top:20px">
+    <span class="chip off">Clásico estadístico</span>
+    <span class="chip off">RNN</span>
+    <span class="chip off">CNN+RNN</span>
+    <span class="chip off">Transformer</span>
+  </div>
+  <div style="margin-top:18px"><span class="chip win" style="font-size:clamp(1.1rem,2vw,1.6rem)">✓ Red neuronal 1D</span></div>
+  <div class="stat-note" style="margin-top:16px">Mejor equilibrio precisión / tamaño / velocidad para el dispositivo real</div>
+</div>
+
+<!-- 10 RENDIMIENTO -->
+<div class="slide center" id="s10">
+  <div class="tag">Rendimiento on-device</div>
+  <div class="title">Dos modelos, <span>sin que se note</span></div>
+  <div class="trio" style="margin-top:20px;max-width:1000px">
+    <div class="s"><div class="n">106 KB</div><div class="l">Modelo actividad</div></div>
+    <div class="s green"><div class="n">22 KB</div><div class="l">Modelo caídas</div></div>
+    <div class="s amber"><div class="n">📵</div><div class="l">Funciona sin internet</div><div class="d">Incluso en modo avión</div></div>
+  </div>
+</div>
+
+<!-- 11 MODELO CAÍDAS -->
+<div class="slide center" id="s11a">
+  <div class="tag">El modelo de caídas</div>
+  <div class="title">CNN binaria, <span>ultraligera</span></div>
+  <div class="flow" style="margin-top:18px">
+    <div class="fbox amber"><div class="ic">📉</div><div class="t">2 s</div><div class="n2">100 muestras · 6 ejes</div></div>
+    <div class="arrow">→</div>
+    <div class="fbox blue"><div class="ic">🧠</div><div class="t">CNN 1D</div><div class="n2">2 bloques conv</div></div>
+    <div class="arrow">→</div>
+    <div class="fbox green"><div class="ic">⚠️</div><div class="t">¿Caída?</div><div class="n2">sí / no</div></div>
+  </div>
+  <div class="chips" style="margin-top:20px">
+    <span class="chip">Conv 32</span>
+    <span class="chip">Conv 64</span>
+    <span class="chip">Pooling</span>
+    <span class="chip">Dense 32</span>
+    <span class="chip win">Sigmoid</span>
+  </div>
+  <div class="kpi-line" style="margin-top:22px">
+    <div><span style="font-size:clamp(1.6rem,3.5vw,2.6rem);font-weight:800;color:var(--green)">22 KB</span> <span style="color:var(--muted)">tamaño int8</span></div>
+    <div><span style="font-size:clamp(1.6rem,3.5vw,2.6rem);font-weight:800;color:var(--blue)">recall primero</span></div>
+  </div>
+</div>
+
+<!-- 12 CAÍDAS RESULTADOS -->
+<div class="slide center" id="s11">
+  <div class="tag">Detección de caídas · Resultados</div>
+  <div class="trio" style="max-width:1000px">
+    <div class="s green"><div class="n">100%</div><div class="l">Caídas detectadas</div></div>
+    <div class="s"><div class="n">96.5%</div><div class="l">Precisión</div><div class="d">Pocas falsas alarmas</div></div>
+    <div class="s amber"><div class="n">22 KB</div><div class="l">Tamaño</div></div>
+  </div>
+</div>
+
+<!-- 12 CAÍDAS CÓMO -->
+<div class="slide center" id="s12">
+  <div class="tag">Cómo confirma una caída</div>
+  <div class="title">4 filtros <span>contra falsas alarmas</span></div>
+  <div class="steps" style="margin-top:14px">
+    <div class="step"><div class="num">1</div><div class="st">Detecta impacto</div><div class="sd">Golpe brusco, siempre activo</div></div>
+    <div class="step"><div class="num">2</div><div class="st">IA confirma</div><div class="sd">Descarta golpes accidentales</div></div>
+    <div class="step"><div class="num">3</div><div class="st">30 s inmóvil</div><div class="sd">Verifica que no se ha levantado</div></div>
+    <div class="step"><div class="num">4</div><div class="st">"¿Estás bien?"</div><div class="sd">Sin respuesta → avisa familia</div></div>
+  </div>
+</div>
+
+<!-- 13 RIESGO FP/FN -->
+<div class="slide center" id="s13">
+  <div class="tag">Sensibilidad según perfil</div>
+  <div class="title">Cada póliza, <span>su ajuste</span></div>
+  <div class="cards c3" style="margin-top:16px;max-width:1100px">
+    <div class="card green"><div class="ic">🏥</div><div class="ct">65+ años</div><div class="cb">Muy sensible — no se pierde ninguna caída</div></div>
+    <div class="card blue"><div class="ic">⚖️</div><div class="ct">45–65 años</div><div class="cb">Equilibrado — alta detección, pocas alarmas</div></div>
+    <div class="card amber"><div class="ic">🎯</div><div class="ct">&lt;45 años</div><div class="cb">Conservador — solo caídas claras</div></div>
+  </div>
+  <div class="stat-note" style="margin-top:14px">Vitalia lo cambia desde el perfil — sin reprogramar nada</div>
+</div>
+
+<!-- 14 PRIVACIDAD -->
+<div class="slide center" id="s14">
+  <div class="tag">Privacidad · RGPD por diseño</div>
+  <div class="title" style="max-width:18ch">Los datos <span class="gr">nunca salen de Europa</span></div>
+  <div class="stat-note" style="margin-top:14px;font-size:clamp(1rem,1.7vw,1.35rem)">La señal cruda de movimiento se procesa <strong>en el móvil</strong> y se borra en segundos. Solo viaja el resultado: <em>"caminó 15 min"</em>.</div>
+</div>
+
+<!-- 15 ARQUITECTURA -->
+<div class="slide center" id="s15">
+  <div class="tag">Arquitectura a producción</div>
+  <div class="title">Servidor propio, <span>sin terceros</span></div>
+  <div class="flow" style="margin-top:18px">
+    <div class="fbox blue"><div class="ic">📱</div><div class="t">Smartphone</div><div class="n2">IA + caídas</div></div>
+    <div class="arrow">→<small>solo el evento</small></div>
+    <div class="fbox amber"><div class="ic">🖥️</div><div class="t">Servidor</div><div class="n2">Hetzner · Frankfurt</div></div>
+  </div>
+  <div class="chips" style="margin-top:20px">
+    <span class="chip">Flutter</span><span class="chip">FastAPI</span><span class="chip">PostgreSQL</span><span class="chip">Redis</span><span class="chip">ntfy</span><span class="chip">MinIO</span>
+  </div>
+</div>
+
+<!-- 16 COSTE CONSTRUIR -->
+<div class="slide center" id="s16">
+  <div class="tag">Coste · Construcción (una vez)</div>
+  <div class="row" style="justify-content:center;align-items:flex-end;gap:24px">
+    <div class="stat green" style="font-size:clamp(3rem,9vw,7rem)">50.000€</div>
+    <div class="stat-note" style="margin-bottom:14px">para 180.000 asegurados</div>
+  </div>
+  <div class="bars" style="margin-top:10px;margin-left:auto;margin-right:auto">
+    <div class="bar"><div class="bl">Datos + 2 modelos IA</div><div class="bt"><div class="bf" style="width:84%"></div></div><div class="bv">21.000€</div></div>
+    <div class="bar"><div class="bl">App + infraestructura</div><div class="bt"><div class="bf" style="width:64%"></div></div><div class="bv">16.000€</div></div>
+    <div class="bar"><div class="bl">Automatización + QA</div><div class="bt"><div class="bf" style="width:40%"></div></div><div class="bv">10.000€</div></div>
+    <div class="bar"><div class="bl">Legal + protección datos</div><div class="bt"><div class="bf" style="width:12%"></div></div><div class="bv">3.000€</div></div>
+  </div>
+</div>
+
+<!-- 17 COSTE OPERAR + ROI -->
+<div class="slide center" id="s17">
+  <div class="tag">Coste · Operación + Retorno</div>
+  <div class="row">
+    <div>
+      <div class="stat">512€<span style="font-size:.35em;color:var(--muted)">/mes</span></div>
+      <div class="stat-note" style="margin-top:6px">0,003 € por usuario y mes</div>
+    </div>
+  </div>
+  <div class="card green" style="margin-top:24px;max-width:760px">
+    <div class="ct">📈 Retorno año 1</div>
+    <div class="cb" style="font-size:clamp(1rem,1.7vw,1.4rem);color:var(--ink)">Intervención temprana en caídas → <strong style="color:var(--green)">9,18 M€ de ahorro/año</strong>. Recuperación de la inversión: <strong>&lt; 1 semana</strong>.</div>
+  </div>
+</div>
+
+<!-- 18 CIERRE -->
+<div class="slide center" id="s18">
+  <div class="tag">Por qué esta solución</div>
+  <div class="title">3 razones <span>que la hacen única</span></div>
+  <div class="cards c3" style="margin-top:18px;max-width:1100px">
+    <div class="card blue"><div class="ic">💰</div><div class="ct">Precio</div><div class="cb">9× más barata que cualquier API de terceros</div></div>
+    <div class="card green"><div class="ic">🏆</div><div class="ct">Robustez</div><div class="cb">54 personas · 15 ancianos reales · 4 filtros</div></div>
+    <div class="card amber"><div class="ic">🎯</div><div class="ct">Ajuste</div><div class="cb">RGPD por diseño · datos en Europa · VitaPoints</div></div>
+  </div>
+</div>
+
+</div><!-- end .deck -->
+
+<nav class="nav">
+  <button class="nav-btn" id="prevBtn" onclick="go(-1)">← Anterior</button>
+  <div class="nav-counter" id="ctr">1 / 18</div>
+  <button class="nav-btn" id="nextBtn" onclick="go(1)">Siguiente →</button>
+</nav>
+
+<script>
+const slides=document.querySelectorAll('.slide');
+const total=slides.length;
+let cur=0;
+function show(n){
+  slides[cur].classList.remove('active');
+  cur=Math.max(0,Math.min(n,total-1));
+  slides[cur].classList.add('active');
+  document.getElementById('ctr').textContent=(cur+1)+' / '+total;
+  document.getElementById('pb').style.width=((cur+1)/total*100)+'%';
+  document.getElementById('prevBtn').disabled=cur===0;
+  document.getElementById('nextBtn').disabled=cur===total-1;
+}
+function go(d){show(cur+d);}
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'||e.key==='ArrowDown'||e.key===' ')go(1);
+  if(e.key==='ArrowLeft'||e.key==='ArrowUp')go(-1);
+});
+let tx=0;
+document.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;});
+document.addEventListener('touchend',e=>{const d=e.changedTouches[0].clientX-tx;if(Math.abs(d)>50)go(d<0?1:-1);});
+show(0);
+</script>
+</body>
+</html>
