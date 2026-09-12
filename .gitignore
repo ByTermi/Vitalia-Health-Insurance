@@ -52,3 +52,22 @@ data/processed/*.npy
 # Kaggle upload staging folders (contain heavy .npy and binary dataset files)
 scripts/vitalia-har-processed-upload/
 scripts/pamap2-upload/
+
+# --- migracion a GitHub: seguridad y ruido ---
+.env
+.env.*
+!.env.example
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.pyc
+dist/
+build/
+.DS_Store
+Thumbs.db
+*.pem
+*.key
+id_rsa*
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
